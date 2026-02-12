@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - F1 Prediction Tracker</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+  <header class="header header-admin">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">F1</div>
+        <div>
+          <h1 class="brand-title">Admin Panel</h1>
+          <p class="brand-subtitle">F1 Prediction Tracker</p>
+        </div>
+      </div>
+      <div id="admin-user-area" class="user-area"></div>
+    </div>
+  </header>
+
+  <main class="main" id="admin-app">
+
+    <!-- Admin Login -->
+    <div id="admin-login" class="view" style="display:none">
+      <div class="modal-content" style="max-width:400px;margin:2rem auto">
+        <h2>Admin Login</h2>
+        <form id="admin-login-form">
+          <div class="form-group">
+            <label for="admin-username">Username</label>
+            <input type="text" id="admin-username" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="admin-password">Password</label>
+            <input type="password" id="admin-password" required autocomplete="current-password">
+          </div>
+          <div id="admin-login-error" class="error-msg" style="display:none"></div>
+          <button type="submit" class="btn btn-primary btn-full">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="view" style="display:none">
+      <nav class="nav">
+        <button class="nav-btn active" data-admin-view="results">Enter Results</button>
+        <button class="nav-btn" data-admin-view="users">Users</button>
+        <button class="nav-btn" data-admin-view="predictions">View Predictions</button>
+        <button class="nav-btn" data-admin-view="leaderboard">Leaderboard</button>
+      </nav>
+
+      <!-- Enter Results -->
+      <div id="admin-results" class="admin-section">
+        <h2 class="view-title">Enter Race Results</h2>
+        <div class="form-group">
+          <label for="result-race-select">Select Race</label>
+          <select id="result-race-select" class="select-full"></select>
+        </div>
+        <div id="result-form-area"></div>
+      </div>
+
+      <!-- Users List -->
+      <div id="admin-users" class="admin-section" style="display:none">
+        <h2 class="view-title">All Users</h2>
+        <div id="users-list"></div>
+      </div>
+
+      <!-- View Predictions -->
+      <div id="admin-predictions" class="admin-section" style="display:none">
+        <h2 class="view-title">View Predictions by Race</h2>
+        <div class="form-group">
+          <label for="pred-race-select">Select Race</label>
+          <select id="pred-race-select" class="select-full"></select>
+        </div>
+        <div id="admin-pred-list"></div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div id="admin-leaderboard" class="admin-section" style="display:none">
+        <h2 class="view-title">Leaderboard</h2>
+        <button class="btn btn-secondary" id="btn-mailerlite-sync" style="margin-bottom:1rem">Sync MailerLite</button>
+        <div id="admin-leaderboard-content"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <p><a href="/" class="footer-link">&larr; Back to Prediction Tracker</a></p>
+  </footer>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>
