@@ -851,3 +851,25 @@ body {
 .champagne-celebration {
   animation: champagne-spray 0.5s ease-in-out;
 }
+/* ── Modal Heading Custom Styling ── */
+
+.modal-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.modal-play {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--f1-red);
+  letter-spacing: 0.1em;
+}
+
+.modal-subtitle {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--f1-text);
+}
