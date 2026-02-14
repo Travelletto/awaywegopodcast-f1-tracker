@@ -310,7 +310,18 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
-  const admin = db.getAdmin(username);
+  // Try database first
+  let admin = db.getAdmin(username);
+  
+  // Fallback to environment variables if no database admin exists
+  if (!admin && username === (process.env.ADMIN_USERNAME || 'admin') && password === process.env.ADMIN_PASSWORD) {
+    // Create admin in database for future logins
+    const hash = bcrypt.hashSync(password, 12);
+    db.createAdmin(username, hash);
+    admin = { username: username };
+    console.log('Admin account created from environment variables');
+  }
+  
   if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
