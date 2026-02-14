@@ -9,14 +9,6 @@ const path = require('path');
 const db = require('./database');
 
 const app = express();
-// Auto-create admin on startup
-const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-const adminPassword = process.env.ADMIN_PASSWORD;
-if (adminPassword) {
-  const hash = bcrypt.hashSync(adminPassword, 12);
-  db.createAdmin(adminUsername, hash);
-  console.log('Admin account ready');
-}
 const PORT = process.env.PORT || 3000;
 
 // ── Middleware ──
@@ -59,45 +51,41 @@ const DRIVERS = [
   { name: 'Franco Colapinto', team: 'Alpine' },
   { name: 'Carlos Sainz', team: 'Williams' },
   { name: 'Alexander Albon', team: 'Williams' },
-  { name: 'Nico Hulkenberg', team: 'Audi' },
-  { name: 'Gabriel Bortoleto', team: 'Audi' },
   { name: 'Esteban Ocon', team: 'Haas' },
   { name: 'Oliver Bearman', team: 'Haas' },
+  { name: 'Nico Hulkenberg', team: 'Audi' },
+  { name: 'Gabriel Bortoleto', team: 'Audi' },
   { name: 'Yuki Tsunoda', team: 'Racing Bulls' },
   { name: 'Liam Lawson', team: 'Racing Bulls' },
   { name: 'Sergio Perez', team: 'Cadillac' },
   { name: 'Valtteri Bottas', team: 'Cadillac' }
 ];
 
-// 2026 F1 Calendar with lock times (UTC)
-// For regular races: qualifying is Saturday afternoon, lock = 1h before quali
-// For sprint weekends: sprint quali is Friday, main quali is Saturday
-// Sprint format: Fri (FP1 + Sprint Quali), Sat (Sprint + Quali), Sun (Race)
 const RACES = [
-  { id: 1,  name: 'Australian GP',       location: 'Melbourne',   dates: 'Mar 6-8',    sprint: false, qualiLock: '2026-03-07T05:00:00Z' },
-  { id: 2,  name: 'Chinese GP',          location: 'Shanghai',    dates: 'Mar 13-15',  sprint: true,  sprintQualiLock: '2026-03-13T07:00:00Z', qualiLock: '2026-03-14T07:00:00Z' },
-  { id: 3,  name: 'Japanese GP',         location: 'Suzuka',      dates: 'Mar 27-29',  sprint: false, qualiLock: '2026-03-28T05:00:00Z' },
-  { id: 4,  name: 'Bahrain GP',          location: 'Sakhir',      dates: 'Apr 10-12',  sprint: false, qualiLock: '2026-04-11T14:00:00Z' },
-  { id: 5,  name: 'Saudi Arabian GP',    location: 'Jeddah',      dates: 'Apr 17-19',  sprint: false, qualiLock: '2026-04-18T14:00:00Z' },
-  { id: 6,  name: 'Miami GP',            location: 'Miami',       dates: 'May 1-3',    sprint: true,  sprintQualiLock: '2026-05-01T19:30:00Z', qualiLock: '2026-05-02T20:00:00Z' },
-  { id: 7,  name: 'Canadian GP',         location: 'Montreal',    dates: 'May 22-24',  sprint: true,  sprintQualiLock: '2026-05-22T19:30:00Z', qualiLock: '2026-05-23T20:00:00Z' },
-  { id: 8,  name: 'Monaco GP',           location: 'Monte Carlo', dates: 'Jun 5-7',    sprint: false, qualiLock: '2026-06-06T13:00:00Z' },
-  { id: 9,  name: 'Barcelona-Catalunya GP', location: 'Barcelona', dates: 'Jun 12-14', sprint: false, qualiLock: '2026-06-13T13:00:00Z' },
-  { id: 10, name: 'Austrian GP',         location: 'Spielberg',   dates: 'Jun 26-28',  sprint: false, qualiLock: '2026-06-27T13:00:00Z' },
-  { id: 11, name: 'British GP',          location: 'Silverstone', dates: 'Jul 3-5',    sprint: true,  sprintQualiLock: '2026-07-03T13:30:00Z', qualiLock: '2026-07-04T14:00:00Z' },
-  { id: 12, name: 'Belgian GP',          location: 'Spa',         dates: 'Jul 17-19',  sprint: false, qualiLock: '2026-07-18T13:00:00Z' },
-  { id: 13, name: 'Hungarian GP',        location: 'Budapest',    dates: 'Jul 24-26',  sprint: false, qualiLock: '2026-07-25T13:00:00Z' },
-  { id: 14, name: 'Dutch GP',            location: 'Zandvoort',   dates: 'Aug 21-23',  sprint: true,  sprintQualiLock: '2026-08-21T12:30:00Z', qualiLock: '2026-08-22T13:00:00Z' },
-  { id: 15, name: 'Italian GP',          location: 'Monza',       dates: 'Sep 4-6',    sprint: false, qualiLock: '2026-09-05T13:00:00Z' },
-  { id: 16, name: 'Madrid GP',           location: 'Madrid',      dates: 'Sep 11-13',  sprint: false, qualiLock: '2026-09-12T13:00:00Z' },
-  { id: 17, name: 'Azerbaijan GP',       location: 'Baku',        dates: 'Sep 25-27',  sprint: false, qualiLock: '2026-09-26T11:00:00Z' },
-  { id: 18, name: 'Singapore GP',        location: 'Singapore',   dates: 'Oct 9-11',   sprint: true,  sprintQualiLock: '2026-10-09T12:30:00Z', qualiLock: '2026-10-10T13:00:00Z' },
-  { id: 19, name: 'United States GP',    location: 'Austin',      dates: 'Oct 23-25',  sprint: false, qualiLock: '2026-10-24T20:00:00Z' },
-  { id: 20, name: 'Mexican GP',          location: 'Mexico City', dates: 'Oct 30-Nov 1', sprint: false, qualiLock: '2026-10-31T22:00:00Z' },
-  { id: 21, name: 'Brazilian GP',        location: 'Sao Paulo',   dates: 'Nov 6-8',    sprint: false, qualiLock: '2026-11-07T17:00:00Z' },
-  { id: 22, name: 'Las Vegas GP',        location: 'Las Vegas',   dates: 'Nov 19-21',  sprint: false, qualiLock: '2026-11-21T05:00:00Z' },
-  { id: 23, name: 'Qatar GP',            location: 'Lusail',      dates: 'Nov 27-29',  sprint: false, qualiLock: '2026-11-28T13:00:00Z' },
-  { id: 24, name: 'Abu Dhabi GP',        location: 'Yas Marina',  dates: 'Dec 4-6',    sprint: false, qualiLock: '2026-12-05T12:00:00Z' }
+  { id: 1, name: 'Australian GP', location: 'Melbourne', dates: 'Mar 6-8', sprint: false, qualiLock: '2026-03-07T05:00:00Z' },
+  { id: 2, name: 'Chinese GP', location: 'Shanghai', dates: 'Mar 13-15', sprint: true, sprintQualiLock: '2026-03-13T07:00:00Z', qualiLock: '2026-03-14T07:00:00Z' },
+  { id: 3, name: 'Japanese GP', location: 'Suzuka', dates: 'Mar 27-29', sprint: false, qualiLock: '2026-03-28T05:00:00Z' },
+  { id: 4, name: 'Bahrain GP', location: 'Sakhir', dates: 'Apr 10-12', sprint: false, qualiLock: '2026-04-11T14:00:00Z' },
+  { id: 5, name: 'Saudi Arabian GP', location: 'Jeddah', dates: 'Apr 17-19', sprint: false, qualiLock: '2026-04-18T14:00:00Z' },
+  { id: 6, name: 'Miami GP', location: 'Miami', dates: 'May 1-3', sprint: true, sprintQualiLock: '2026-05-01T19:30:00Z', qualiLock: '2026-05-02T20:00:00Z' },
+  { id: 7, name: 'Canadian GP', location: 'Montreal', dates: 'May 22-24', sprint: true, sprintQualiLock: '2026-05-22T19:30:00Z', qualiLock: '2026-05-23T20:00:00Z' },
+  { id: 8, name: 'Monaco GP', location: 'Monte Carlo', dates: 'Jun 5-7', sprint: false, qualiLock: '2026-06-06T13:00:00Z' },
+  { id: 9, name: 'Barcelona-Catalunya GP', location: 'Barcelona', dates: 'Jun 12-14', sprint: false, qualiLock: '2026-06-13T13:00:00Z' },
+  { id: 10, name: 'Austrian GP', location: 'Spielberg', dates: 'Jun 26-28', sprint: false, qualiLock: '2026-06-27T13:00:00Z' },
+  { id: 11, name: 'British GP', location: 'Silverstone', dates: 'Jul 3-5', sprint: true, sprintQualiLock: '2026-07-03T13:30:00Z', qualiLock: '2026-07-04T14:00:00Z' },
+  { id: 12, name: 'Belgian GP', location: 'Spa', dates: 'Jul 17-19', sprint: false, qualiLock: '2026-07-18T13:00:00Z' },
+  { id: 13, name: 'Hungarian GP', location: 'Budapest', dates: 'Jul 24-26', sprint: false, qualiLock: '2026-07-25T13:00:00Z' },
+  { id: 14, name: 'Dutch GP', location: 'Zandvoort', dates: 'Aug 21-23', sprint: true, sprintQualiLock: '2026-08-21T12:30:00Z', qualiLock: '2026-08-22T13:00:00Z' },
+  { id: 15, name: 'Italian GP', location: 'Monza', dates: 'Sep 4-6', sprint: false, qualiLock: '2026-09-05T13:00:00Z' },
+  { id: 16, name: 'Madrid GP', location: 'Madrid', dates: 'Sep 11-13', sprint: false, qualiLock: '2026-09-12T13:00:00Z' },
+  { id: 17, name: 'Azerbaijan GP', location: 'Baku', dates: 'Sep 25-27', sprint: false, qualiLock: '2026-09-26T11:00:00Z' },
+  { id: 18, name: 'Singapore GP', location: 'Singapore', dates: 'Oct 9-11', sprint: true, sprintQualiLock: '2026-10-09T12:30:00Z', qualiLock: '2026-10-10T13:00:00Z' },
+  { id: 19, name: 'United States GP', location: 'Austin', dates: 'Oct 23-25', sprint: false, qualiLock: '2026-10-24T20:00:00Z' },
+  { id: 20, name: 'Mexican GP', location: 'Mexico City', dates: 'Oct 30-Nov 1', sprint: false, qualiLock: '2026-10-31T22:00:00Z' },
+  { id: 21, name: 'Brazilian GP', location: 'Sao Paulo', dates: 'Nov 6-8', sprint: false, qualiLock: '2026-11-07T17:00:00Z' },
+  { id: 22, name: 'Las Vegas GP', location: 'Las Vegas', dates: 'Nov 19-21', sprint: false, qualiLock: '2026-11-21T05:00:00Z' },
+  { id: 23, name: 'Qatar GP', location: 'Lusail', dates: 'Nov 27-29', sprint: false, qualiLock: '2026-11-28T13:00:00Z' },
+  { id: 24, name: 'Abu Dhabi GP', location: 'Yas Marina', dates: 'Dec 4-6', sprint: false, qualiLock: '2026-12-05T12:00:00Z' }
 ];
 
 // ── Auth Middleware ──
@@ -122,7 +110,6 @@ function adminAuthMiddleware(req, res, next) {
 
 // ── Public API Routes ──
 
-// Get F1 season data (drivers, teams, calendar)
 app.get('/api/data', (req, res) => {
   const results = db.getAllResults();
   const resultsMap = {};
@@ -130,18 +117,14 @@ app.get('/api/data', (req, res) => {
     if (!resultsMap[r.race_id]) resultsMap[r.race_id] = {};
     resultsMap[r.race_id][r.result_type] = { p1: r.p1, p2: r.p2, p3: r.p3 };
   }
-
+  const now = new Date();
   const racesWithStatus = RACES.map(race => {
-    const now = new Date();
     const raceResult = resultsMap[race.id];
-
-    // Determine lock status
     const raceLocked = new Date(race.qualiLock) <= now;
     let sprintLocked = false;
     if (race.sprint) {
       sprintLocked = new Date(race.sprintQualiLock) <= now;
     }
-
     return {
       ...race,
       raceLocked,
@@ -150,7 +133,6 @@ app.get('/api/data', (req, res) => {
       sprintResult: raceResult?.sprint || null
     };
   });
-
   res.json({ teams: TEAMS, drivers: DRIVERS, races: racesWithStatus });
 });
 
@@ -161,36 +143,26 @@ app.post('/api/signup', (req, res) => {
   if (!username || username.trim().length < 2 || username.trim().length > 30) {
     return res.status(400).json({ error: 'Username must be 2-30 characters' });
   }
-
-  // Validate username format: alphanumeric, spaces, underscores, hyphens
   if (!/^[a-zA-Z0-9 _-]+$/.test(username.trim())) {
     return res.status(400).json({ error: 'Username can only contain letters, numbers, spaces, underscores, and hyphens' });
   }
-
-  // Check if username already exists
   const existing = db.getUserByUsername(username.trim());
   if (existing) {
     return res.status(409).json({ error: 'Username already taken' });
   }
-
-  // Validate email if provided
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Invalid email address' });
   }
-
-  const token = uuidv4();
   try {
+    const token = uuidv4();
     db.createUser(username.trim(), token, email, emailOptin);
     const user = db.getUserByToken(token);
-
-    // Set cookie that lasts 1 year
     res.cookie('f1tracker_token', token, {
       httpOnly: true,
       maxAge: 365 * 24 * 60 * 60 * 1000,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production'
     });
-
     res.json({
       id: user.id,
       username: user.username,
@@ -202,7 +174,6 @@ app.post('/api/signup', (req, res) => {
   }
 });
 
-// Get current user
 app.get('/api/me', (req, res) => {
   const token = req.cookies.f1tracker_token;
   if (!token) return res.json({ user: null });
@@ -218,13 +189,11 @@ app.get('/api/me', (req, res) => {
   });
 });
 
-// Logout
 app.post('/api/logout', (req, res) => {
   res.clearCookie('f1tracker_token');
   res.json({ ok: true });
 });
 
-// Update email preferences
 app.put('/api/me/email', authMiddleware, (req, res) => {
   const { email, emailOptin } = req.body;
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -236,26 +205,17 @@ app.put('/api/me/email', authMiddleware, (req, res) => {
 
 // ── Predictions ──
 
-// Submit or update prediction
 app.post('/api/predictions/:raceId', authMiddleware, (req, res) => {
   const raceId = parseInt(req.params.raceId, 10);
   const { type, p1, p2, p3 } = req.body;
-
-  // Validate race exists
   const race = RACES.find(r => r.id === raceId);
   if (!race) return res.status(404).json({ error: 'Race not found' });
-
-  // Validate prediction type
   if (type !== 'race' && type !== 'sprint') {
     return res.status(400).json({ error: 'Invalid prediction type' });
   }
-
-  // Sprint predictions only for sprint weekends
   if (type === 'sprint' && !race.sprint) {
     return res.status(400).json({ error: 'This race does not have a sprint' });
   }
-
-  // Check lock time
   const now = new Date();
   if (type === 'race' && new Date(race.qualiLock) <= now) {
     return res.status(403).json({ error: 'Predictions are locked for this race' });
@@ -263,8 +223,6 @@ app.post('/api/predictions/:raceId', authMiddleware, (req, res) => {
   if (type === 'sprint' && new Date(race.sprintQualiLock) <= now) {
     return res.status(403).json({ error: 'Sprint predictions are locked for this race' });
   }
-
-  // Validate drivers
   const driverNames = DRIVERS.map(d => d.name);
   if (!p1 || !p2 || !p3) {
     return res.status(400).json({ error: 'Must select P1, P2, and P3' });
@@ -275,12 +233,10 @@ app.post('/api/predictions/:raceId', authMiddleware, (req, res) => {
   if (p1 === p2 || p1 === p3 || p2 === p3) {
     return res.status(400).json({ error: 'Each position must be a different driver' });
   }
-
   db.upsertPrediction(req.user.id, raceId, type, p1, p2, p3);
   res.json({ ok: true });
 });
 
-// Get current user's predictions for a race
 app.get('/api/predictions/:raceId', authMiddleware, (req, res) => {
   const raceId = parseInt(req.params.raceId, 10);
   const racePred = db.getUserPrediction(req.user.id, raceId, 'race');
@@ -288,7 +244,6 @@ app.get('/api/predictions/:raceId', authMiddleware, (req, res) => {
   res.json({ race: racePred || null, sprint: sprintPred || null });
 });
 
-// Get all of current user's predictions
 app.get('/api/my-predictions', authMiddleware, (req, res) => {
   const predictions = db.getUserPredictions(req.user.id);
   res.json({ predictions });
@@ -303,7 +258,6 @@ app.get('/api/leaderboard', (req, res) => {
 
 // ── Admin Routes ──
 
-// Admin login
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -315,36 +269,29 @@ app.post('/api/admin/login', (req, res) => {
   
   if (username === envUsername && password === envPassword && envPassword) {
     try {
-      // Create/update admin in database
       const hash = bcrypt.hashSync(password, 12);
       db.createAdmin(username, hash);
-      
-      // Get the admin to get the ID
       const admin = db.getAdmin(username);
       if (!admin) {
         return res.status(500).json({ error: 'Admin creation failed' });
       }
-      
-      // Create session with the admin ID
       db.deleteExpiredAdminSessions();
       const token = uuidv4();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       db.createAdminSession(admin.id, token, expiresAt);
-      
       res.cookie('f1tracker_admin', token, {
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production'
       });
-      
       return res.json({ ok: true, username: admin.username });
     } catch (err) {
       console.error('Admin login error:', err);
       return res.status(500).json({ error: 'Login failed: ' + err.message });
     }
+  }
 
-  // Database authentication fallback
   const admin = db.getAdmin(username);
   if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
     return res.status(401).json({ error: 'Invalid credentials' });
@@ -364,61 +311,12 @@ app.post('/api/admin/login', (req, res) => {
   
   res.json({ ok: true, username: admin.username });
 });
-    }
-  }
 
-  // Try database authentication
-  const admin = db.getAdmin(username);
-  if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  db.deleteExpiredAdminSessions();
-  const token = uuidv4();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  db.createAdminSession(admin.id, token, expiresAt);
-  
-  res.cookie('f1tracker_admin', token, {
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production'
-  });
-  
-  res.json({ ok: true, username: admin.username });
-});
-  }
-
-  // Otherwise try database
-  const admin = db.getAdmin(username);
-  if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-  // Clean up expired sessions
-  db.deleteExpiredAdminSessions();
-
-  // Create admin session (24 hours)
-  const token = uuidv4();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  db.createAdminSession(admin.id, token, expiresAt);
-
-  res.cookie('f1tracker_admin', token, {
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production'
-  });
-
-  res.json({ ok: true, username: admin.username });
-});
-
-// Admin logout
 app.post('/api/admin/logout', (req, res) => {
   res.clearCookie('f1tracker_admin');
   res.json({ ok: true });
 });
 
-// Check admin session
 app.get('/api/admin/me', (req, res) => {
   const token = req.cookies.f1tracker_admin;
   if (!token) return res.json({ admin: null });
@@ -427,21 +325,17 @@ app.get('/api/admin/me', (req, res) => {
   res.json({ admin: { id: session.admin_id } });
 });
 
-// Enter/update race results
 app.post('/api/admin/results/:raceId', adminAuthMiddleware, (req, res) => {
   const raceId = parseInt(req.params.raceId, 10);
   const { type, p1, p2, p3 } = req.body;
-
   const race = RACES.find(r => r.id === raceId);
   if (!race) return res.status(404).json({ error: 'Race not found' });
-
   if (type !== 'race' && type !== 'sprint') {
     return res.status(400).json({ error: 'Invalid result type' });
   }
   if (type === 'sprint' && !race.sprint) {
     return res.status(400).json({ error: 'This race does not have a sprint' });
   }
-
   const driverNames = DRIVERS.map(d => d.name);
   if (!driverNames.includes(p1) || !driverNames.includes(p2) || !driverNames.includes(p3)) {
     return res.status(400).json({ error: 'Invalid driver selection' });
@@ -449,22 +343,16 @@ app.post('/api/admin/results/:raceId', adminAuthMiddleware, (req, res) => {
   if (p1 === p2 || p1 === p3 || p2 === p3) {
     return res.status(400).json({ error: 'Each position must be a different driver' });
   }
-
   db.upsertResult(raceId, type, p1, p2, p3);
-
-  // Trigger MailerLite update if configured
   updateMailerLite().catch(err => console.error('MailerLite update error:', err));
-
   res.json({ ok: true });
 });
 
-// Get all users and their predictions
 app.get('/api/admin/users', adminAuthMiddleware, (req, res) => {
   const users = db.getAllUsers();
   res.json({ users });
 });
 
-// Get all predictions for a specific race
 app.get('/api/admin/predictions/:raceId', adminAuthMiddleware, (req, res) => {
   const raceId = parseInt(req.params.raceId, 10);
   const racePreds = db.getRacePredictions(raceId, 'race');
@@ -472,7 +360,6 @@ app.get('/api/admin/predictions/:raceId', adminAuthMiddleware, (req, res) => {
   res.json({ race: racePreds, sprint: sprintPreds });
 });
 
-// Get full leaderboard (admin version with extra detail)
 app.get('/api/admin/leaderboard', adminAuthMiddleware, (req, res) => {
   const leaderboard = db.calculateLeaderboard();
   res.json({ leaderboard });
@@ -483,17 +370,14 @@ app.get('/api/admin/leaderboard', adminAuthMiddleware, (req, res) => {
 async function updateMailerLite() {
   const apiKey = process.env.MAILERLITE_API_KEY;
   const groupId = process.env.MAILERLITE_GROUP_ID;
-  if (!apiKey) return; // MailerLite not configured, skip silently
-
+  if (!apiKey) return;
   const users = db.getEmailOptInUsers();
   if (users.length === 0) return;
-
   const leaderboard = db.calculateLeaderboard();
   const leaderboardMap = {};
   for (const entry of leaderboard) {
     leaderboardMap[entry.userId] = entry;
   }
-
   for (const user of users) {
     const stats = leaderboardMap[user.id] || { totalPoints: 0, rank: '-' };
     try {
@@ -508,7 +392,6 @@ async function updateMailerLite() {
       if (groupId) {
         body.groups = [groupId];
       }
-
       await fetch('https://connect.mailerlite.com/api/subscribers', {
         method: 'POST',
         headers: {
@@ -523,7 +406,6 @@ async function updateMailerLite() {
   }
 }
 
-// Manual MailerLite sync endpoint (admin only)
 app.post('/api/admin/mailerlite-sync', adminAuthMiddleware, async (req, res) => {
   try {
     await updateMailerLite();
@@ -533,9 +415,7 @@ app.post('/api/admin/mailerlite-sync', adminAuthMiddleware, async (req, res) => 
   }
 });
 
-// MailerLite webhook endpoint for external integrations
 app.post('/api/mailerlite/webhook', (req, res) => {
-  // Verify webhook secret if configured
   const webhookSecret = process.env.MAILERLITE_WEBHOOK_SECRET;
   if (webhookSecret) {
     const provided = req.headers['x-webhook-secret'] || req.body.secret;
@@ -543,16 +423,12 @@ app.post('/api/mailerlite/webhook', (req, res) => {
       return res.status(403).json({ error: 'Invalid webhook secret' });
     }
   }
-
-  // Return current leaderboard data for the requested user
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
-
   const leaderboard = db.calculateLeaderboard();
   const allUsers = db.getAllUsers();
   const user = allUsers.find(u => u.email === email);
   if (!user) return res.status(404).json({ error: 'User not found' });
-
   const stats = leaderboard.find(l => l.userId === user.id) || { totalPoints: 0, rank: '-' };
   res.json({
     username: user.username,
@@ -568,7 +444,6 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// SPA catch-all - serve index.html for any unmatched routes
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'Endpoint not found' });
