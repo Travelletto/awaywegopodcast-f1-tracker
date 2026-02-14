@@ -250,11 +250,11 @@ function createAdminSession(adminId, token, expiresAt) {
 }
 
 function getAdminSession(token) {
-  return db.prepare('SELECT * FROM admin_sessions WHERE token = ? AND expires_at > datetime("now")').get(token);
+  return db.prepare('SELECT * FROM admin_sessions WHERE token = ? AND expires_at > CURRENT_TIMESTAMP').get(token);
 }
 
 function deleteExpiredAdminSessions() {
-  return db.prepare('DELETE FROM admin_sessions WHERE expires_at <= datetime("now")').run();
+  return db.prepare('DELETE FROM admin_sessions WHERE expires_at <= CURRENT_TIMESTAMP').run();
 }
 
 // Get users with email opt-in for MailerLite updates
