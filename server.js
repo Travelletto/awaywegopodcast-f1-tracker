@@ -9,6 +9,15 @@ const path = require('path');
 const db = require('./database');
 
 const app = express();
+// Auto-create admin on startup
+const bcrypt = require('bcryptjs');
+const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+const adminPassword = process.env.ADMIN_PASSWORD;
+if (adminPassword) {
+  const hash = bcrypt.hashSync(adminPassword, 12);
+  db.createAdmin(adminUsername, hash);
+  console.log('Admin account ready');
+}
 const PORT = process.env.PORT || 3000;
 
 // ── Middleware ──
