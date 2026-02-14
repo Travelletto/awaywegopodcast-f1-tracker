@@ -310,22 +310,34 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
-  // Try database first
-  let admin = db.getAdmin(username);
-  
-  // Fallback to environment variables if no database admin exists
-  if (!admin && username === (process.env.ADMIN_USERNAME || 'admin') && password === process.env.ADMIN_PASSWORD) {
-    // Create admin in database for future logins
+  // Check environment variables first (immediate fallback)
+  if (username === (process.env.ADMIN_USERNAME || 'admin') && password === process.env.ADMIN_PASSWORD) {
+    // Valid env credentials - create/update in database for future
     const hash = bcrypt.hashSync(password, 12);
     db.createAdmin(username, hash);
-    admin = { username: username };
-    console.log('Admin account created from environment variables');
+    console.log('Admin logged in via environment variables');
+    
+    // Create session and login immediately
+    db.deleteExpiredAdminSessions();
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    db.createAdminSession(username, token, expiresAt);
+    
+    res.cookie('f1tracker_admin', token, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production'
+    });
+    
+    return res.json({ ok: true, username: username });
   }
-  
+
+  // Otherwise try database
+  const admin = db.getAdmin(username);
   if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-
   // Clean up expired sessions
   db.deleteExpiredAdminSessions();
 
