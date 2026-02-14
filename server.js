@@ -10,7 +10,6 @@ const db = require('./database');
 
 const app = express();
 // Auto-create admin on startup
-const bcrypt = require('bcryptjs');
 const adminUsername = process.env.ADMIN_USERNAME || 'admin';
 const adminPassword = process.env.ADMIN_PASSWORD;
 if (adminPassword) {
