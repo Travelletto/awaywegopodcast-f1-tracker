@@ -304,33 +304,66 @@ app.get('/api/leaderboard', (req, res) => {
 // ── Admin Routes ──
 
 // Admin login
-app.post('/api/admin/login', (req, res) => {
+// Admin login
+app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
-  // Check environment variables first (immediate fallback)
-  if (username === (process.env.ADMIN_USERNAME || 'admin') && password === process.env.ADMIN_PASSWORD) {
-    // Valid env credentials - create/update in database for future
-    const hash = bcrypt.hashSync(password, 12);
-    db.createAdmin(username, hash);
-    console.log('Admin logged in via environment variables');
+  // Check if this matches environment variable credentials
+  const envUsername = process.env.ADMIN_USERNAME || 'admin';
+  const envPassword = process.env.ADMIN_PASSWORD;
+  
+  if (username === envUsername && password === envPassword && envPassword) {
+    // Valid environment credentials - ensure admin exists in database
+    try {
+      const hash = bcrypt.hashSync(password, 12);
+      db.createAdmin(username, hash);
+      console.log('Admin account created/updated from environment variables');
+    } catch (err) {
+      console.log('Admin setup:', err.message);
+    }
     
-    // Create session and login immediately
+    // Create session
     db.deleteExpiredAdminSessions();
-    const token = uuidv4();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    db.createAdminSession(username, token, expiresAt);
-    
-    res.cookie('f1tracker_admin', token, {
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production'
-    });
-    
-    return res.json({ ok: true, username: username });
+    const admin = db.getAdmin(username);
+    if (admin) {
+      const token = uuidv4();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      db.createAdminSession(admin.id, token, expiresAt);
+      
+      res.cookie('f1tracker_admin', token, {
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+      });
+      
+      return res.json({ ok: true, username: admin.username });
+    }
+  }
+
+  // Try database authentication
+  const admin = db.getAdmin(username);
+  if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  db.deleteExpiredAdminSessions();
+  const token = uuidv4();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  db.createAdminSession(admin.id, token, expiresAt);
+  
+  res.cookie('f1tracker_admin', token, {
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  });
+  
+  res.json({ ok: true, username: admin.username });
+});
   }
 
   // Otherwise try database
