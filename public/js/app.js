@@ -326,24 +326,34 @@
   }
 
   function renderDriverOptions(selected) {
-    if (!seasonData) return '';
-    // Group drivers by team
-    const teamOrder = seasonData.teams.map(t => t.name);
-    const grouped = {};
-    for (const team of teamOrder) {
-      grouped[team] = seasonData.drivers.filter(d => d.team === team);
-    }
-
-    let html = '';
-    for (const team of teamOrder) {
-      const color = teamColors[team] || '#666';
-      for (const driver of grouped[team]) {
-        const sel = driver.name === selected ? 'selected' : '';
-        html += `<option value="${escHtml(driver.name)}" ${sel} style="border-left: 4px solid ${color}; padding-left: 8px">${escHtml(driver.name)} (${escHtml(team)})</option>`;
-      }
-    }
-    return html;
+  // Helper function to determine if text should be white or black
+  function getTextColor(hexColor) {
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 155 ? '#000000' : '#FFFFFF';
   }
+  
+  if (!seasonData) return '';
+  const teamOrder = seasonData.teams.map(t => t.name);
+  const grouped = {};
+  for (const team of teamOrder) {
+    grouped[team] = seasonData.drivers.filter(d => d.team === team);
+  }
+  let html = '<option value="">Select driver...</option>';
+  for (const team of teamOrder) {
+    const color = teamColors[team] || '#666';
+    const textColor = getTextColor(color);
+    const drivers = grouped[team];
+    for (const driver of drivers) {
+      const sel = driver.name === selected ? 'selected' : '';
+      html += `<option value="${escHtml(driver.name)}" ${sel} style="background-color: ${color}; color: ${textColor}; padding: 8px;">${escHtml(driver.name)} (${escHtml(team)})</option>`;
+    }
+  }
+  return html;
+}
 
   function renderResultComparison(type, result, prediction) {
     const points = type === 'sprint'
