@@ -22,29 +22,35 @@
 
   // ── Init ──
   async function init() {
-    // Check if user has reset password token in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const resetToken = urlParams.get('token');
-    if (resetToken) {
-      showResetPasswordModal(resetToken);
-      return;
-    }
-
-    // Check if user is logged in
-    const meResp = await fetch('/api/me', { credentials: 'include' });
-    const meData = await meResp.json();
-    
-    if (meData.user) {
-      currentUser = meData.user;
-      await loadSeasonData();
-      renderUserArea();
-      showNav();
-      renderView(currentView);
-      attachNavHandlers();
-    } else {
-      showSignupModal();
-    }
+  // Check if user has reset password token in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('token');
+  if (resetToken) {
+    showResetPasswordModal(resetToken);
+    return;
   }
+
+  // Check if user is logged in
+  const meResp = await fetch('/api/me', { credentials: 'include' });
+  const meData = await meResp.json();
+  
+  await loadSeasonData();
+  
+  if (meData.user) {
+    currentUser = meData.user;
+    renderUserArea();
+    showNav();
+    renderView(currentView);
+    attachNavHandlers();
+  } else {
+    // Not logged in - show leaderboard only
+    currentView = 'leaderboard';
+    renderUserArea();
+    showPublicNav();
+    renderView('leaderboard');
+    attachNavHandlers();
+  }
+}
 
   async function loadSeasonData() {
     const resp = await fetch('/api/data');
@@ -245,8 +251,14 @@
     await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     currentUser = null;
     hideNav();
-    showSignupModal();
-  }
+   function showPublicNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = `
+    <button class="nav-btn active" data-view="leaderboard">Leaderboard</button>
+    <button class="nav-btn" data-view="login">Sign Up / Log In</button>
+  `;
+  nav.style.display = 'flex';
+}
 
   function showNav() {
     document.getElementById('nav').style.display = 'flex';
@@ -270,24 +282,39 @@
 
   // ── View Rendering ──
   function renderView(view) {
-    const main = document.getElementById('main');
-    switch (view) {
-      case 'calendar':
-        renderCalendar(main);
-        break;
-      case 'predictions':
-        renderMyPredictions(main);
-        break;
-      case 'leaderboard':
-        renderLeaderboard(main);
-        break;
-      case 'settings':
-        renderSettings(main);
-        break;
-      default:
-        main.innerHTML = '<p class="loading">Unknown view</p>';
-    }
+  const main = document.getElementById('main');
+  switch (view) {
+    case 'calendar':
+      if (!currentUser) {
+        showSignupModal();
+        return;
+      }
+      renderCalendar(main);
+      break;
+    case 'predictions':
+      if (!currentUser) {
+        showSignupModal();
+        return;
+      }
+      renderMyPredictions(main);
+      break;
+    case 'leaderboard':
+      renderLeaderboard(main);
+      break;
+    case 'settings':
+      if (!currentUser) {
+        showSignupModal();
+        return;
+      }
+      renderSettings(main);
+      break;
+    case 'login':
+      showSignupModal();
+      break;
+    default:
+      main.innerHTML = '<p class="loading">Unknown view</p>';
   }
+}
 
   // ── Calendar View ──
   function renderCalendar(container) {
