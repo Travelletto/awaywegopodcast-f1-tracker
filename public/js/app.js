@@ -334,56 +334,98 @@
   }
 
   // ── Calendar View ──
-  function renderCalendar(container) {
-    if (!seasonData) {
-      container.innerHTML = '<p class="loading">Loading...</p>';
-      return;
+async function renderCalendar(container) {
+  if (!seasonData) {
+    container.innerHTML = '<p class="loading">Loading...</p>';
+    return;
+  }
+  
+  // Fetch leaderboard for sidebar
+  const leaderboardResp = await fetch('/api/leaderboard');
+  const leaderboardData = await leaderboardResp.json();
+  const topTen = leaderboardData.leaderboard.slice(0, 10);
+  
+  container.innerHTML = `
+    <h1 class="view-title">2026 Formula 1 World Championship Calendar</h1>
+    <div class="calendar-layout">
+      <div class="calendar-main">
+        <div class="race-list" id="raceList"></div>
+      </div>
+      <div class="calendar-sidebar">
+        <h3 class="sidebar-title">🏆 Top 10 Leaderboard</h3>
+        <ul class="sidebar-leaderboard" id="sidebarLeaderboard"></ul>
+        <button class="btn btn-secondary btn-full btn-small" id="viewFullLeaderboard">View Full Leaderboard</button>
+      </div>
+    </div>
+  `;
+  
+  // Render races
+  const raceList = document.getElementById('raceList');
+  for (const race of seasonData.races) {
+    const card = document.createElement('div');
+    card.className = 'race-card';
+    
+    const hasRaceResult = race.raceResult !== null;
+    const hasSprintResult = race.sprint && race.sprintResult !== null;
+    const allResultsIn = hasRaceResult && (!race.sprint || hasSprintResult);
+    
+    if (allResultsIn) {
+      card.classList.add('completed');
+    } else if (race.raceLocked) {
+      card.classList.add('active');
+    } else {
+      card.classList.add('upcoming');
     }
     
-    container.innerHTML = `
-      <h1 class="view-title">2026 Formula 1 World Championship Calendar</h1>
-      <div class="race-list" id="raceList"></div>
+    const statusText = allResultsIn ? 'Completed' : (race.raceLocked ? 'Locked' : 'Open');
+    const statusClass = allResultsIn ? 'status-completed' : (race.raceLocked ? 'status-locked' : 'status-open');
+    
+    card.innerHTML = `
+      <div class="race-number">${race.id}</div>
+      <div class="race-info">
+        <div class="race-name">
+          ${escHtml(race.name)}
+          ${race.sprint ? '<span class="sprint-badge">Sprint</span>' : ''}
+        </div>
+        <div class="race-meta">
+          <span>${escHtml(race.location)}</span>
+          <span>${escHtml(race.dates)}</span>
+        </div>
+      </div>
+      <div class="race-status ${statusClass}">${statusText}</div>
     `;
     
-    const raceList = document.getElementById('raceList');
-    for (const race of seasonData.races) {
-      const card = document.createElement('div');
-      card.className = 'race-card';
-      
-      const hasRaceResult = race.raceResult !== null;
-      const hasSprintResult = race.sprint && race.sprintResult !== null;
-      const allResultsIn = hasRaceResult && (!race.sprint || hasSprintResult);
-      
-      if (allResultsIn) {
-        card.classList.add('completed');
-      } else if (race.raceLocked) {
-        card.classList.add('active');
-      } else {
-        card.classList.add('upcoming');
-      }
-      
-      const statusText = allResultsIn ? 'Completed' : (race.raceLocked ? 'Locked' : 'Open');
-      const statusClass = allResultsIn ? 'status-completed' : (race.raceLocked ? 'status-locked' : 'status-open');
-      
-      card.innerHTML = `
-        <div class="race-number">${race.id}</div>
-        <div class="race-info">
-          <div class="race-name">
-            ${escHtml(race.name)}
-            ${race.sprint ? '<span class="sprint-badge">Sprint</span>' : ''}
-          </div>
-          <div class="race-meta">
-            <span>${escHtml(race.location)}</span>
-            <span>${escHtml(race.dates)}</span>
-          </div>
-        </div>
-        <div class="race-status ${statusClass}">${statusText}</div>
+    card.addEventListener('click', () => showRaceDetail(race));
+    raceList.appendChild(card);
+  }
+  
+  // Render sidebar leaderboard
+  const sidebarList = document.getElementById('sidebarLeaderboard');
+  if (topTen.length === 0) {
+    sidebarList.innerHTML = '<li style="border:none; color: var(--f1-text-dim);">No scores yet</li>';
+  } else {
+    for (const entry of topTen) {
+      const li = document.createElement('li');
+      const rankClass = entry.rank <= 3 ? `rank-${entry.rank}` : '';
+      li.innerHTML = `
+        <span class="sidebar-rank ${rankClass}">${entry.rank}</span>
+        <span class="sidebar-username">${escHtml(entry.username)}</span>
+        <span class="sidebar-points">${entry.totalPoints}</span>
       `;
-      
-      card.addEventListener('click', () => showRaceDetail(race));
-      raceList.appendChild(card);
+      sidebarList.appendChild(li);
     }
   }
+  
+  // View full leaderboard button
+  document.getElementById('viewFullLeaderboard').addEventListener('click', () => {
+    const navBtns = document.querySelectorAll('.nav-btn');
+    navBtns.forEach(b => b.classList.remove('active'));
+    const leaderboardBtn = Array.from(navBtns).find(b => b.dataset.view === 'leaderboard');
+    if (leaderboardBtn) leaderboardBtn.classList.add('active');
+    currentView = 'leaderboard';
+    renderView('leaderboard');
+  });
+}
 
   // ── Race Detail View ──
   async function showRaceDetail(race) {
