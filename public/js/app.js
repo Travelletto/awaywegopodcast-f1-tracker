@@ -1,262 +1,356 @@
-// app.js - Away We Go Podcast F1 Prediction Tracker (Frontend)
-
-(function () {
+// app.js - Frontend for F1 Prediction Tracker
+(() => {
   'use strict';
 
-  // ── State ──
   let currentUser = null;
-  let seasonData = null;   // { teams, drivers, races }
-  let myPredictions = [];  // all predictions for current user
+  let seasonData = null;
+  let currentView = 'calendar';
 
-  // Team color lookup
-  const teamColors = {};
-
-  // ── DOM Refs ──
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => document.querySelectorAll(sel);
+  const teamColors = {
+    'Red Bull': '#1E5BC6',
+    'McLaren': '#FF8000',
+    'Ferrari': '#E4002B',
+    'Mercedes': '#00A19B',
+    'Aston Martin': '#115845',
+    'Alpine': '#F282B4',
+    'Williams': '#002B5C',
+    'Haas': '#FFFFFF',
+    'Audi': '#6D6D6D',
+    'Racing Bulls': '#4781D7',
+    'Cadillac': '#000000'
+  };
 
   // ── Init ──
   async function init() {
-    await Promise.all([loadUser(), loadSeasonData()]);
-    buildTeamColorMap();
-
-    if (!currentUser) {
-      showSignupModal();
-    } else {
-      hideSignupModal();
-      loadMyPredictions();
-    }
-
-    renderUserArea();
-    renderCalendar();
-    setupNavigation();
-    setupSignupForm();
-  }
-
-  // ── API Helpers ──
-
-  async function api(path, options = {}) {
-    const res = await fetch(path, {
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...options.headers },
-      ...options
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    return data;
-  }
-
-  async function loadUser() {
-    try {
-      const data = await api('/api/me');
-      currentUser = data.user;
-    } catch { currentUser = null; }
-  }
-
-  async function loadSeasonData() {
-    seasonData = await api('/api/data');
-  }
-
-  async function loadMyPredictions() {
-    if (!currentUser) return;
-    try {
-      const data = await api('/api/my-predictions');
-      myPredictions = data.predictions || [];
-    } catch { myPredictions = []; }
-  }
-
-  function buildTeamColorMap() {
-    if (!seasonData) return;
-    for (const team of seasonData.teams) {
-      teamColors[team.name] = team.color;
-    }
-  }
-
-  function getDriverTeamColor(driverName) {
-    if (!seasonData) return '#666';
-    const driver = seasonData.drivers.find(d => d.name === driverName);
-    if (!driver) return '#666';
-    return teamColors[driver.team] || '#666';
-  }
-
-  function getDriverTeam(driverName) {
-    if (!seasonData) return '';
-    const driver = seasonData.drivers.find(d => d.name === driverName);
-    return driver ? driver.team : '';
-  }
-
-  // ── Navigation ──
-
-  function setupNavigation() {
-    $$('.nav-btn[data-view]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const view = btn.dataset.view;
-        showView(view);
-        $$('.nav-btn[data-view]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
-    });
-
-    $('#btn-back-calendar').addEventListener('click', () => {
-      showView('calendar');
-      $$('.nav-btn[data-view]').forEach(b => b.classList.remove('active'));
-      $('[data-view="calendar"]').classList.add('active');
-    });
-  }
-
-  function showView(viewName) {
-    $$('.view').forEach(v => v.style.display = 'none');
-    const target = $(`#view-${viewName}`);
-    if (target) target.style.display = 'block';
-
-    // Render view content on switch
-    if (viewName === 'leaderboard') renderLeaderboard();
-    if (viewName === 'my-predictions') renderMyPredictions();
-    if (viewName === 'settings') renderSettings();
-  }
-
-  // ── User Area (Header) ──
-
-  function renderUserArea() {
-    const area = $('#user-area');
-    if (currentUser) {
-      area.innerHTML = `
-        <span class="user-name">${escHtml(currentUser.username)}</span>
-        <button class="btn btn-small btn-secondary" id="btn-logout">Logout</button>
-      `;
-      $('#btn-logout').addEventListener('click', logout);
-    } else {
-      area.innerHTML = `<button class="btn btn-small btn-primary" id="btn-show-signup">Sign Up</button>`;
-      $('#btn-show-signup').addEventListener('click', showSignupModal);
-    }
-  }
-
-  async function logout() {
-    await api('/api/logout', { method: 'POST' });
-    currentUser = null;
-    myPredictions = [];
-    renderUserArea();
-    renderCalendar();
-    showSignupModal();
-  }
-
-  // ── Signup ──
-
-  function showSignupModal() {
-    $('#signup-modal').style.display = 'flex';
-  }
-
-  function hideSignupModal() {
-    $('#signup-modal').style.display = 'none';
-  }
-
-  function setupSignupForm() {
-    $('#signup-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const username = $('#signup-username').value.trim();
-      const email = $('#signup-email').value.trim();
-      const emailOptin = $('#signup-email-optin').checked;
-      const errEl = $('#signup-error');
-
-      try {
-        const data = await api('/api/signup', {
-          method: 'POST',
-          body: JSON.stringify({ username, email: email || undefined, emailOptin })
-        });
-        currentUser = data;
-        hideSignupModal();
-        renderUserArea();
-        renderCalendar();
-        loadMyPredictions();
-      } catch (err) {
-        errEl.textContent = err.message;
-        errEl.style.display = 'block';
-      }
-    });
-  }
-
-  // ── Calendar View ──
-
-  function renderCalendar() {
-    const list = $('#race-list');
-    if (!seasonData) {
-      list.innerHTML = '<div class="loading">Loading calendar</div>';
+    // Check if user has reset password token in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+    if (resetToken) {
+      showResetPasswordModal(resetToken);
       return;
     }
 
-    const now = new Date();
-    list.innerHTML = seasonData.races.map(race => {
-      const hasResult = !!race.raceResult;
-      const isLocked = race.raceLocked;
-      let statusClass = 'upcoming';
-      let statusText = 'Open';
+    // Check if user is logged in
+    const meResp = await fetch('/api/me', { credentials: 'include' });
+    const meData = await meResp.json();
+    
+    if (meData.user) {
+      currentUser = meData.user;
+      await loadSeasonData();
+      renderUserArea();
+      showNav();
+      renderView(currentView);
+      attachNavHandlers();
+    } else {
+      showSignupModal();
+    }
+  }
 
-      if (hasResult) {
-        statusClass = 'completed';
-        statusText = 'Completed';
-      } else if (isLocked) {
-        statusClass = 'active';
-        statusText = 'Locked';
-      }
+  async function loadSeasonData() {
+    const resp = await fetch('/api/data');
+    seasonData = await resp.json();
+  }
 
-      // Check if user has predicted
-      const hasPrediction = myPredictions.some(p => p.race_id === race.id && p.prediction_type === 'race');
-      const hasSprintPrediction = race.sprint && myPredictions.some(p => p.race_id === race.id && p.prediction_type === 'sprint');
+  // ── Modal Management ──
+  function showSignupModal() {
+    hideAllModals();
+    document.getElementById('signupModal').style.display = 'flex';
+  }
 
-      return `
-        <div class="race-card ${statusClass}" data-race-id="${race.id}">
-          <div class="race-number">${race.id}</div>
-          <div class="race-info">
-            <div class="race-name">
-              ${escHtml(race.name)}
-              ${race.sprint ? '<span class="sprint-badge">Sprint</span>' : ''}
-            </div>
-            <div class="race-meta">
-              <span>${escHtml(race.location)}</span>
-              <span>${escHtml(race.dates)}</span>
-            </div>
-            ${hasPrediction ? '<span class="predicted-badge">Predicted</span>' : ''}
-            ${hasSprintPrediction ? '<span class="predicted-badge">Sprint Predicted</span>' : ''}
-          </div>
-          <div class="race-status status-${statusClass === 'completed' ? 'completed' : (statusClass === 'active' ? 'locked' : 'open')}">
-            ${statusText}
-          </div>
-        </div>
-      `;
-    }).join('');
+  function showLoginModal() {
+    hideAllModals();
+    document.getElementById('loginModal').style.display = 'flex';
+  }
 
-    // Add click handlers
-    $$('.race-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const raceId = parseInt(card.dataset.raceId, 10);
-        openRacePrediction(raceId);
+  function showForgotPasswordModal() {
+    hideAllModals();
+    document.getElementById('forgotPasswordModal').style.display = 'flex';
+  }
+
+  function showResetPasswordModal(token) {
+    hideAllModals();
+    document.getElementById('resetToken').value = token;
+    document.getElementById('resetPasswordModal').style.display = 'flex';
+  }
+
+  function hideAllModals() {
+    document.getElementById('signupModal').style.display = 'none';
+    document.getElementById('loginModal').style.display = 'none';
+    document.getElementById('forgotPasswordModal').style.display = 'none';
+    document.getElementById('resetPasswordModal').style.display = 'none';
+  }
+
+  // ── Auth Forms ──
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+      username: form.username.value,
+      email: form.email.value,
+      password: form.password.value,
+      emailOptin: form.emailOptin.checked
+    };
+    
+    const resp = await fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    });
+    
+    const result = await resp.json();
+    
+    if (!resp.ok) {
+      document.getElementById('signupError').textContent = result.error;
+      document.getElementById('signupError').style.display = 'block';
+      return;
+    }
+    
+    currentUser = result;
+    hideAllModals();
+    await loadSeasonData();
+    renderUserArea();
+    showNav();
+    renderView('calendar');
+    attachNavHandlers();
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+      emailOrUsername: form.emailOrUsername.value,
+      password: form.password.value
+    };
+    
+    const resp = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    });
+    
+    const result = await resp.json();
+    
+    if (!resp.ok) {
+      document.getElementById('loginError').textContent = result.error;
+      document.getElementById('loginError').style.display = 'block';
+      return;
+    }
+    
+    currentUser = result;
+    hideAllModals();
+    await loadSeasonData();
+    renderUserArea();
+    showNav();
+    renderView('calendar');
+    attachNavHandlers();
+  });
+
+  document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = { email: form.email.value };
+    
+    const resp = await fetch('/api/password-reset/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await resp.json();
+    
+    document.getElementById('forgotPasswordError').style.display = 'none';
+    document.getElementById('forgotPasswordSuccess').textContent = result.message;
+    document.getElementById('forgotPasswordSuccess').style.display = 'block';
+    form.reset();
+  });
+
+  document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const newPassword = form.newPassword.value;
+    const confirmPassword = form.confirmPassword.value;
+    
+    if (newPassword !== confirmPassword) {
+      document.getElementById('resetPasswordError').textContent = 'Passwords do not match';
+      document.getElementById('resetPasswordError').style.display = 'block';
+      return;
+    }
+    
+    const data = {
+      token: form.token.value,
+      newPassword: newPassword
+    };
+    
+    const resp = await fetch('/api/password-reset/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await resp.json();
+    
+    if (!resp.ok) {
+      document.getElementById('resetPasswordError').textContent = result.error;
+      document.getElementById('resetPasswordError').style.display = 'block';
+      return;
+    }
+    
+    document.getElementById('resetPasswordError').style.display = 'none';
+    document.getElementById('resetPasswordSuccess').textContent = 'Password updated! You can now log in.';
+    document.getElementById('resetPasswordSuccess').style.display = 'block';
+    
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 2000);
+  });
+
+  // Modal switching links
+  document.getElementById('showLoginLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    showLoginModal();
+  });
+
+  document.getElementById('showSignupLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    showSignupModal();
+  });
+
+  document.getElementById('showForgotPasswordLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    showForgotPasswordModal();
+  });
+
+  document.getElementById('backToLoginLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    showLoginModal();
+  });
+
+  // ── User Area ──
+  function renderUserArea() {
+    const userArea = document.getElementById('userArea');
+    if (!currentUser) {
+      userArea.innerHTML = '<button class="btn btn-small" id="loginBtn">Log In</button>';
+      return;
+    }
+    userArea.innerHTML = `
+      <span class="user-name">${escHtml(currentUser.username)}</span>
+      <button class="btn btn-small btn-secondary" id="logoutBtn">Log Out</button>
+    `;
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+  }
+
+  async function logout() {
+    await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+    currentUser = null;
+    hideNav();
+    showSignupModal();
+  }
+
+  function showNav() {
+    document.getElementById('nav').style.display = 'flex';
+  }
+
+  function hideNav() {
+    document.getElementById('nav').style.display = 'none';
+  }
+
+  function attachNavHandlers() {
+    const navBtns = document.querySelectorAll('.nav-btn');
+    navBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        navBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view;
+        renderView(currentView);
       });
     });
   }
 
-  // ── Prediction View ──
-
-  async function openRacePrediction(raceId) {
-    const race = seasonData.races.find(r => r.id === raceId);
-    if (!race) return;
-
-    showView('prediction');
-    const content = $('#prediction-content');
-    content.innerHTML = '<div class="loading">Loading</div>';
-
-    // Fetch user's existing prediction for this race
-    let userPrediction = { race: null, sprint: null };
-    if (currentUser) {
-      try {
-        userPrediction = await api(`/api/predictions/${raceId}`);
-      } catch {}
+  // ── View Rendering ──
+  function renderView(view) {
+    const main = document.getElementById('main');
+    switch (view) {
+      case 'calendar':
+        renderCalendar(main);
+        break;
+      case 'predictions':
+        renderMyPredictions(main);
+        break;
+      case 'leaderboard':
+        renderLeaderboard(main);
+        break;
+      case 'settings':
+        renderSettings(main);
+        break;
+      default:
+        main.innerHTML = '<p class="loading">Unknown view</p>';
     }
+  }
 
-    const now = new Date();
-    const raceLocked = new Date(race.qualiLock) <= now;
-    const sprintLocked = race.sprint ? new Date(race.sprintQualiLock) <= now : true;
+  // ── Calendar View ──
+  function renderCalendar(container) {
+    if (!seasonData) {
+      container.innerHTML = '<p class="loading">Loading...</p>';
+      return;
+    }
+    
+    container.innerHTML = `
+      <h1 class="view-title">2026 Formula 1 World Championship Calendar</h1>
+      <div class="race-list" id="raceList"></div>
+    `;
+    
+    const raceList = document.getElementById('raceList');
+    for (const race of seasonData.races) {
+      const card = document.createElement('div');
+      card.className = 'race-card';
+      
+      const hasRaceResult = race.raceResult !== null;
+      const hasSprintResult = race.sprint && race.sprintResult !== null;
+      const allResultsIn = hasRaceResult && (!race.sprint || hasSprintResult);
+      
+      if (allResultsIn) {
+        card.classList.add('completed');
+      } else if (race.raceLocked) {
+        card.classList.add('active');
+      } else {
+        card.classList.add('upcoming');
+      }
+      
+      const statusText = allResultsIn ? 'Completed' : (race.raceLocked ? 'Locked' : 'Open');
+      const statusClass = allResultsIn ? 'status-completed' : (race.raceLocked ? 'status-locked' : 'status-open');
+      
+      card.innerHTML = `
+        <div class="race-number">${race.id}</div>
+        <div class="race-info">
+          <div class="race-name">
+            ${escHtml(race.name)}
+            ${race.sprint ? '<span class="sprint-badge">Sprint</span>' : ''}
+          </div>
+          <div class="race-meta">
+            <span>${escHtml(race.location)}</span>
+            <span>${escHtml(race.dates)}</span>
+          </div>
+        </div>
+        <div class="race-status ${statusClass}">${statusText}</div>
+      `;
+      
+      card.addEventListener('click', () => showRaceDetail(race));
+      raceList.appendChild(card);
+    }
+  }
 
-    content.innerHTML = `
+  // ── Race Detail View ──
+  async function showRaceDetail(race) {
+    const main = document.getElementById('main');
+    main.innerHTML = '<p class="loading">Loading race details...</p>';
+    
+    const resp = await fetch(`/api/predictions/${race.id}`, { credentials: 'include' });
+    const data = await resp.json();
+    
+    main.innerHTML = `
+      <button class="btn btn-back" id="backBtn">← Back to Calendar</button>
       <div class="prediction-header">
         <h2>${escHtml(race.name)}</h2>
         <div class="race-meta">
@@ -265,449 +359,336 @@
           ${race.sprint ? '<span class="sprint-badge">Sprint Weekend</span>' : ''}
         </div>
       </div>
-
-      ${race.sprint ? `
-        <div class="prediction-section" id="sprint-section">
-          <h3>Sprint Predictions <span class="sprint-badge">Sprint</span></h3>
-          ${sprintLocked
-            ? `<div class="lock-info">Sprint predictions are locked</div>`
-            : `<div class="lock-info">Locks: ${formatLockTime(race.sprintQualiLock)}</div>`
-          }
-          ${renderPredictionForm('sprint', race, userPrediction.sprint, sprintLocked)}
-          ${race.sprintResult ? renderResultComparison('sprint', race.sprintResult, userPrediction.sprint) : ''}
-        </div>
-      ` : ''}
-
-      <div class="prediction-section" id="race-section">
-        <h3>Race Predictions</h3>
-        ${raceLocked
-          ? `<div class="lock-info">Race predictions are locked</div>`
-          : `<div class="lock-info">Locks: ${formatLockTime(race.qualiLock)}</div>`
-        }
-        ${renderPredictionForm('race', race, userPrediction.race, raceLocked)}
-        ${race.raceResult ? renderResultComparison('race', race.raceResult, userPrediction.race) : ''}
-      </div>
+      <div id="raceContent"></div>
     `;
-
-    // Setup form submission handlers
-    setupPredictionSubmit(raceId, 'race', raceLocked);
-    if (race.sprint) {
-      setupPredictionSubmit(raceId, 'sprint', sprintLocked);
+    
+    document.getElementById('backBtn').addEventListener('click', () => renderView('calendar'));
+    
+    const content = document.getElementById('raceContent');
+    
+    // Race prediction form
+    if (!race.raceLocked) {
+      content.innerHTML += renderPredictionForm(race, 'race', data.race);
+    } else if (race.raceResult) {
+      content.innerHTML += renderResultDisplay(race, 'race', race.raceResult, data.race);
+    } else {
+      content.innerHTML += '<div class="lock-info">⏳ Race predictions are locked. Results will be posted after the race.</div>';
     }
+    
+    // Sprint prediction form (if applicable)
+    if (race.sprint) {
+      if (!race.sprintLocked) {
+        content.innerHTML += renderPredictionForm(race, 'sprint', data.sprint);
+      } else if (race.sprintResult) {
+        content.innerHTML += renderResultDisplay(race, 'sprint', race.sprintResult, data.sprint);
+      } else {
+        content.innerHTML += '<div class="lock-info">⏳ Sprint predictions are locked. Results will be posted after the sprint.</div>';
+      }
+    }
+    
+    attachPredictionHandlers(race);
   }
 
-  function renderPredictionForm(type, race, existingPred, locked) {
-    if (!currentUser) {
-      return `<div class="empty-state mt-1"><p>Sign up to make predictions</p></div>`;
-    }
-
-    const positions = ['p1', 'p2', 'p3'];
-    const labels = { p1: 'P1', p2: 'P2', p3: 'P3' };
-
+  function renderPredictionForm(race, type, existingPred) {
+    const title = type === 'race' ? 'Race Prediction' : 'Sprint Prediction';
+    const points = type === 'race' ? 'Race Points: P1 = 25pts, P2 = 18pts, P3 = 15pts' : 'Sprint Points: P1 = 8pts, P2 = 7pts, P3 = 6pts';
+    
     return `
-      <form id="form-${type}" class="mt-1">
-        ${positions.map(pos => `
+      <div class="prediction-section">
+        <h3>${title}</h3>
+        <p class="points-display">${points}</p>
+        <form class="prediction-form" data-race-id="${race.id}" data-type="${type}">
           <div class="position-row">
-            <span class="position-label ${pos}">${labels[pos]}</span>
-            <select class="driver-select" id="${type}-${pos}" ${locked ? 'disabled' : ''}>
-              <option value="">Select driver...</option>
-              ${renderDriverOptions(existingPred ? existingPred[pos] : '')}
+            <div class="position-label p1">P1</div>
+            <select class="driver-select" name="p1" required>
+              ${renderDriverOptions(existingPred?.p1)}
             </select>
           </div>
-        `).join('')}
-        ${!locked ? `
+          <div class="position-row">
+            <div class="position-label p2">P2</div>
+            <select class="driver-select" name="p2" required>
+              ${renderDriverOptions(existingPred?.p2)}
+            </select>
+          </div>
+          <div class="position-row">
+            <div class="position-label p3">P3</div>
+            <select class="driver-select" name="p3" required>
+              ${renderDriverOptions(existingPred?.p3)}
+            </select>
+          </div>
           <div class="prediction-actions">
             <button type="submit" class="btn btn-primary">Save Prediction</button>
           </div>
-        ` : ''}
-        <div id="${type}-msg" style="display:none" class="mt-1"></div>
-      </form>
+          <div class="error-msg" style="display:none;"></div>
+          <div class="success-msg" style="display:none;"></div>
+        </form>
+      </div>
     `;
   }
 
   function renderDriverOptions(selected) {
-  // Helper function to determine if text should be white or black
-  function getTextColor(hexColor) {
-    const hex = hexColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 155 ? '#000000' : '#FFFFFF';
-  }
-  
-  if (!seasonData) return '';
-  const teamOrder = seasonData.teams.map(t => t.name);
-  const grouped = {};
-  for (const team of teamOrder) {
-    grouped[team] = seasonData.drivers.filter(d => d.team === team);
-  }
-  let html = '<option value="">Select driver...</option>';
-  for (const team of teamOrder) {
-    const color = teamColors[team] || '#666';
-    const textColor = getTextColor(color);
-    const drivers = grouped[team];
-    for (const driver of drivers) {
-      const sel = driver.name === selected ? 'selected' : '';
-      html += `<option value="${escHtml(driver.name)}" ${sel} style="background-color: ${color}; color: ${textColor}; padding: 8px;">${escHtml(driver.name)} (${escHtml(team)})</option>`;
+    if (!seasonData) return '';
+    const teamOrder = seasonData.teams.map(t => t.name);
+    const grouped = {};
+    for (const team of teamOrder) {
+      grouped[team] = seasonData.drivers.filter(d => d.team === team);
     }
+    let html = '<option value="">Select driver...</option>';
+    for (const team of teamOrder) {
+      const drivers = grouped[team];
+      for (const driver of drivers) {
+        const sel = driver.name === selected ? 'selected' : '';
+        html += `<option value="${escHtml(driver.name)}" ${sel}>${escHtml(driver.name)} (${escHtml(team)})</option>`;
+      }
+    }
+    return html;
   }
-  return html;
-}
 
-  function renderResultComparison(type, result, prediction) {
-    const points = type === 'sprint'
-      ? { p1: 8, p2: 7, p3: 6 }
-      : { p1: 25, p2: 18, p3: 15 };
-
-    const positions = ['p1', 'p2', 'p3'];
-    let totalEarned = 0;
-
-    const rows = positions.map(pos => {
-      const resultDriver = result[pos];
-      const predDriver = prediction ? prediction[pos] : null;
-      const matched = predDriver && predDriver === resultDriver;
-      const earned = matched ? points[pos] : 0;
-      totalEarned += earned;
-
-      const color = getDriverTeamColor(resultDriver);
-
-      return `
-        <div class="result-row">
-          <span class="position-label ${pos}">${pos.toUpperCase()}</span>
-          <span class="driver-color" style="background:${color}"></span>
-          <span>${escHtml(resultDriver)}</span>
-          ${prediction ? `
-            <span class="${matched ? 'match-yes' : 'match-no'}" style="margin-left:0.5rem">
-              ${matched ? 'Match!' : `(You: ${escHtml(predDriver || 'none')})`}
-            </span>
-            ${earned > 0 ? `<span class="score-earned">+${earned}</span>` : ''}
-          ` : ''}
-        </div>
-      `;
-    }).join('');
-
+  function renderResultDisplay(race, type, result, prediction) {
+    const title = type === 'race' ? 'Race Results' : 'Sprint Results';
+    let score = 0;
+    const points = type === 'race' ? { p1: 25, p2: 18, p3: 15 } : { p1: 8, p2: 7, p3: 6 };
+    
+    let p1Match = false, p2Match = false, p3Match = false;
+    if (prediction) {
+      if (prediction.p1 === result.p1) { score += points.p1; p1Match = true; }
+      if (prediction.p2 === result.p2) { score += points.p2; p2Match = true; }
+      if (prediction.p3 === result.p3) { score += points.p3; p3Match = true; }
+    }
+    
     return `
-      <div class="result-display">
-        <h4>${type === 'sprint' ? 'Sprint' : 'Race'} Result</h4>
-        ${rows}
-        ${prediction ? `<div class="points-display mt-1">Points earned: <span class="points-value">${totalEarned}</span></div>` : ''}
+      <div class="prediction-section">
+        <h3>${title}</h3>
+        <div class="result-display">
+          <h4>Official Results:</h4>
+          <div class="result-row">
+            <div class="position-label p1">P1</div>
+            <span>${escHtml(result.p1)}</span>
+            ${prediction ? `<span class="${p1Match ? 'match-yes' : 'match-no'}">${p1Match ? '✓' : '✗'}</span>` : ''}
+            ${p1Match ? `<span class="score-earned">+${points.p1}</span>` : ''}
+          </div>
+          <div class="result-row">
+            <div class="position-label p2">P2</div>
+            <span>${escHtml(result.p2)}</span>
+            ${prediction ? `<span class="${p2Match ? 'match-yes' : 'match-no'}">${p2Match ? '✓' : '✗'}</span>` : ''}
+            ${p2Match ? `<span class="score-earned">+${points.p2}</span>` : ''}
+          </div>
+          <div class="result-row">
+            <div class="position-label p3">P3</div>
+            <span>${escHtml(result.p3)}</span>
+            ${prediction ? `<span class="${p3Match ? 'match-yes' : 'match-no'}">${p3Match ? '✓' : '✗'}</span>` : ''}
+            ${p3Match ? `<span class="score-earned">+${points.p3}</span>` : ''}
+          </div>
+          ${prediction ? `<p class="points-display">You earned <strong>${score} points</strong> for this ${type}!</p>` : '<p class="text-dim">You did not make a prediction for this event.</p>'}
+        </div>
       </div>
     `;
   }
 
-  function setupPredictionSubmit(raceId, type, locked) {
-    if (locked || !currentUser) return;
-    const form = $(`#form-${type}`);
-    if (!form) return;
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msgEl = $(`#${type}-msg`);
-      const p1 = $(`#${type}-p1`).value;
-      const p2 = $(`#${type}-p2`).value;
-      const p3 = $(`#${type}-p3`).value;
-
-      if (!p1 || !p2 || !p3) {
-        showMsg(msgEl, 'Please select all three positions', 'error');
-        return;
-      }
-      if (p1 === p2 || p1 === p3 || p2 === p3) {
-        showMsg(msgEl, 'Each position must be a different driver', 'error');
-        return;
-      }
-
-      try {
-        await api(`/api/predictions/${raceId}`, {
+  function attachPredictionHandlers(race) {
+    const forms = document.querySelectorAll('.prediction-form');
+    forms.forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const type = form.dataset.type;
+        const data = {
+          type,
+          p1: form.p1.value,
+          p2: form.p2.value,
+          p3: form.p3.value
+        };
+        
+        const resp = await fetch(`/api/predictions/${race.id}`, {
           method: 'POST',
-          body: JSON.stringify({ type, p1, p2, p3 })
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data)
         });
-        showMsg(msgEl, 'Prediction saved!', 'success');
-        // Refresh local predictions cache
-        await loadMyPredictions();
-      } catch (err) {
-        showMsg(msgEl, err.message, 'error');
-      }
-    });
-  }
-
-  function showMsg(el, text, type) {
-    el.textContent = text;
-    el.className = type === 'success' ? 'success-msg mt-1' : 'error-msg mt-1';
-    el.style.display = 'block';
-    setTimeout(() => { el.style.display = 'none'; }, 4000);
-  }
-
-  // ── Leaderboard View ──
-
-  let leaderboardData = [];
-  let leaderboardSortKey = 'totalPoints';
-  let leaderboardSortDir = -1; // -1 = desc
-
-  async function renderLeaderboard() {
-    const content = $('#leaderboard-content');
-    content.innerHTML = '<div class="loading">Loading leaderboard</div>';
-
-    try {
-      const data = await api('/api/leaderboard');
-      leaderboardData = data.leaderboard;
-    } catch {
-      content.innerHTML = '<div class="error-msg">Failed to load leaderboard</div>';
-      return;
-    }
-
-    renderLeaderboardTable();
-  }
-
-  function renderLeaderboardTable() {
-    const content = $('#leaderboard-content');
-    if (leaderboardData.length === 0) {
-      content.innerHTML = `
-        <div class="empty-state">
-          <h3>No predictions yet</h3>
-          <p>Once users start making predictions and results are entered, the leaderboard will appear here.</p>
-        </div>
-      `;
-      return;
-    }
-
-    // Sort
-    const sorted = [...leaderboardData].sort((a, b) => {
-      const av = a[leaderboardSortKey] ?? 0;
-      const bv = b[leaderboardSortKey] ?? 0;
-      return (bv - av) * (leaderboardSortDir === -1 ? 1 : -1);
-    });
-
-    // Re-assign rank for display based on sort
-    if (leaderboardSortKey === 'totalPoints') {
-      let rank = 1;
-      for (let i = 0; i < sorted.length; i++) {
-        if (i > 0 && sorted[i].totalPoints === sorted[i - 1].totalPoints) {
-          sorted[i]._displayRank = sorted[i - 1]._displayRank;
-        } else {
-          sorted[i]._displayRank = rank;
+        
+        const result = await resp.json();
+        const errorEl = form.querySelector('.error-msg');
+        const successEl = form.querySelector('.success-msg');
+        
+        if (!resp.ok) {
+          errorEl.textContent = result.error;
+          errorEl.style.display = 'block';
+          successEl.style.display = 'none';
+          return;
         }
-        rank++;
-      }
-    }
-
-    const sortIcon = (key) => leaderboardSortKey === key ? (leaderboardSortDir === -1 ? ' ▼' : ' ▲') : '';
-
-    content.innerHTML = `
-      <table class="leaderboard-table">
-        <thead>
-          <tr>
-            <th class="${leaderboardSortKey === 'totalPoints' ? 'sorted' : ''}" data-sort="totalPoints">#</th>
-            <th data-sort="username">User</th>
-            <th class="${leaderboardSortKey === 'totalPoints' ? 'sorted' : ''}" data-sort="totalPoints">Points${sortIcon('totalPoints')}</th>
-            <th class="detail-cell ${leaderboardSortKey === 'racePoints' ? 'sorted' : ''}" data-sort="racePoints">Race${sortIcon('racePoints')}</th>
-            <th class="detail-cell ${leaderboardSortKey === 'sprintPoints' ? 'sorted' : ''}" data-sort="sprintPoints">Sprint${sortIcon('sprintPoints')}</th>
-            <th class="detail-cell ${leaderboardSortKey === 'correctPredictions' ? 'sorted' : ''}" data-sort="correctPredictions">Correct${sortIcon('correctPredictions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${sorted.map((entry, i) => {
-            const rankDisplay = leaderboardSortKey === 'totalPoints' ? entry._displayRank : (i + 1);
-            const rankClass = rankDisplay <= 3 ? `rank-${rankDisplay}` : '';
-            const isMe = currentUser && entry.userId === currentUser.id;
-            return `
-              <tr ${isMe ? 'style="background:rgba(228,0,43,0.08)"' : ''}>
-                <td class="rank-cell ${rankClass}">${rankDisplay}</td>
-                <td class="username-cell">${escHtml(entry.username)}${isMe ? ' (you)' : ''}</td>
-                <td class="points-cell">${entry.totalPoints}</td>
-                <td class="detail-cell">${entry.racePoints}</td>
-                <td class="detail-cell">${entry.sprintPoints}</td>
-                <td class="detail-cell">${entry.correctPredictions}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    `;
-
-    // Sort handlers
-    content.querySelectorAll('th[data-sort]').forEach(th => {
-      th.addEventListener('click', () => {
-        const key = th.dataset.sort;
-        if (key === 'username') {
-          // String sort
-          leaderboardData.sort((a, b) => a.username.localeCompare(b.username));
-          leaderboardSortKey = key;
-          leaderboardSortDir = 1;
-        } else {
-          if (leaderboardSortKey === key) {
-            leaderboardSortDir *= -1;
-          } else {
-            leaderboardSortKey = key;
-            leaderboardSortDir = -1;
-          }
-        }
-        renderLeaderboardTable();
+        
+        errorEl.style.display = 'none';
+        successEl.textContent = '✓ Prediction saved!';
+        successEl.style.display = 'block';
       });
     });
   }
 
   // ── My Predictions View ──
-
-  async function renderMyPredictions() {
-    const content = $('#my-predictions-content');
-
-    if (!currentUser) {
-      content.innerHTML = `
-        <div class="empty-state">
-          <h3>Sign up to view your predictions</h3>
-        </div>
-      `;
-      return;
-    }
-
-    content.innerHTML = '<div class="loading">Loading predictions</div>';
-    await loadMyPredictions();
-
-    if (myPredictions.length === 0) {
-      content.innerHTML = `
+  async function renderMyPredictions(container) {
+    container.innerHTML = '<p class="loading">Loading your predictions...</p>';
+    
+    const resp = await fetch('/api/my-predictions', { credentials: 'include' });
+    const data = await resp.json();
+    
+    if (data.predictions.length === 0) {
+      container.innerHTML = `
+        <h1 class="view-title">My Predictions</h1>
         <div class="empty-state">
           <h3>No predictions yet</h3>
-          <p>Go to the Calendar and select a race to make your predictions.</p>
+          <p>Head to the calendar to start making your race predictions!</p>
         </div>
       `;
       return;
     }
-
-    // Group by race
-    const byRace = {};
-    for (const pred of myPredictions) {
-      if (!byRace[pred.race_id]) byRace[pred.race_id] = [];
-      byRace[pred.race_id].push(pred);
+    
+    const grouped = {};
+    for (const pred of data.predictions) {
+      if (!grouped[pred.race_id]) grouped[pred.race_id] = {};
+      grouped[pred.race_id][pred.prediction_type] = pred;
     }
-
-    let html = '';
+    
+    container.innerHTML = `
+      <h1 class="view-title">My Predictions</h1>
+      <div id="predList"></div>
+    `;
+    
+    const predList = document.getElementById('predList');
     for (const race of seasonData.races) {
-      const preds = byRace[race.id];
-      if (!preds) continue;
-
-      for (const pred of preds) {
-        const typeName = pred.prediction_type === 'sprint' ? 'Sprint' : 'Race';
-        const result = pred.prediction_type === 'sprint' ? race.sprintResult : race.raceResult;
-
-        let scoreHtml = '';
-        if (result) {
-          const pts = pred.prediction_type === 'sprint'
-            ? { p1: 8, p2: 7, p3: 6 }
-            : { p1: 25, p2: 18, p3: 15 };
-          let earned = 0;
-          if (pred.p1 === result.p1) earned += pts.p1;
-          if (pred.p2 === result.p2) earned += pts.p2;
-          if (pred.p3 === result.p3) earned += pts.p3;
-          scoreHtml = `<div class="my-pred-score"><span class="points-value" style="color:var(--f1-gold)">${earned} pts</span></div>`;
-        }
-
-        html += `
-          <div class="my-pred-card">
-            <h4>${escHtml(race.name)} - ${typeName}
-              ${pred.prediction_type === 'sprint' ? '<span class="sprint-badge">Sprint</span>' : ''}
-            </h4>
-            <div class="my-pred-drivers">
-              <span class="driver-color-dot" style="background:${getDriverTeamColor(pred.p1)}"></span>P1: ${escHtml(pred.p1)}
-              &nbsp;&bull;&nbsp;
-              <span class="driver-color-dot" style="background:${getDriverTeamColor(pred.p2)}"></span>P2: ${escHtml(pred.p2)}
-              &nbsp;&bull;&nbsp;
-              <span class="driver-color-dot" style="background:${getDriverTeamColor(pred.p3)}"></span>P3: ${escHtml(pred.p3)}
-            </div>
-            ${scoreHtml}
-          </div>
-        `;
+      const racePreds = grouped[race.id];
+      if (!racePreds) continue;
+      
+      const card = document.createElement('div');
+      card.className = 'my-pred-card';
+      
+      let html = `<h4>${escHtml(race.name)}</h4>`;
+      if (racePreds.race) {
+        html += `<div class="my-pred-drivers">
+          <strong>Race:</strong>
+          <span class="driver-color-dot" style="background-color: ${getDriverColor(racePreds.race.p1)}"></span>${escHtml(racePreds.race.p1)},
+          <span class="driver-color-dot" style="background-color: ${getDriverColor(racePreds.race.p2)}"></span>${escHtml(racePreds.race.p2)},
+          <span class="driver-color-dot" style="background-color: ${getDriverColor(racePreds.race.p3)}"></span>${escHtml(racePreds.race.p3)}
+        </div>`;
       }
+      if (racePreds.sprint) {
+        html += `<div class="my-pred-drivers">
+          <strong>Sprint:</strong>
+          <span class="driver-color-dot" style="background-color: ${getDriverColor(racePreds.sprint.p1)}"></span>${escHtml(racePreds.sprint.p1)},
+          <span class="driver-color-dot" style="background-color: ${getDriverColor(racePreds.sprint.p2)}"></span>${escHtml(racePreds.sprint.p2)},
+          <span class="driver-color-dot" style="background-color: ${getDriverColor(racePreds.sprint.p3)}"></span>${escHtml(racePreds.sprint.p3)}
+        </div>`;
+      }
+      
+      card.innerHTML = html;
+      predList.appendChild(card);
     }
+  }
 
-    content.innerHTML = html;
+  function getDriverColor(driverName) {
+    if (!seasonData) return '#666';
+    const driver = seasonData.drivers.find(d => d.name === driverName);
+    if (!driver) return '#666';
+    return teamColors[driver.team] || '#666';
+  }
+
+  // ── Leaderboard View ──
+  async function renderLeaderboard(container) {
+    container.innerHTML = '<p class="loading">Loading leaderboard...</p>';
+    
+    const resp = await fetch('/api/leaderboard');
+    const data = await resp.json();
+    
+    if (data.leaderboard.length === 0) {
+      container.innerHTML = `
+        <h1 class="view-title">Leaderboard</h1>
+        <div class="empty-state">
+          <h3>No scores yet</h3>
+          <p>Scores will appear after the first race results are posted.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = `
+      <h1 class="view-title">Leaderboard</h1>
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th class="sorted">Rank</th>
+            <th>Username</th>
+            <th>Total Points</th>
+            <th class="detail-cell">Race Points</th>
+            <th class="detail-cell">Sprint Points</th>
+            <th class="detail-cell">Correct</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    `;
+    
+    const tbody = document.getElementById('leaderboardBody');
+    for (const entry of data.leaderboard) {
+      const row = document.createElement('tr');
+      const rankClass = entry.rank <= 3 ? `rank-${entry.rank}` : '';
+      row.innerHTML = `
+        <td class="rank-cell ${rankClass}">${entry.rank}</td>
+        <td class="username-cell">${escHtml(entry.username)}</td>
+        <td class="points-cell">${entry.totalPoints}</td>
+        <td class="detail-cell">${entry.racePoints}</td>
+        <td class="detail-cell">${entry.sprintPoints}</td>
+        <td class="detail-cell">${entry.correctPredictions} / ${entry.totalPredictions * 3}</td>
+      `;
+      tbody.appendChild(row);
+    }
   }
 
   // ── Settings View ──
-
-  function renderSettings() {
-    const content = $('#settings-content');
-
-    if (!currentUser) {
-      content.innerHTML = `
-        <div class="empty-state">
-          <h3>Sign up to access settings</h3>
-        </div>
-      `;
-      return;
-    }
-
-    content.innerHTML = `
+  function renderSettings(container) {
+    container.innerHTML = `
+      <h1 class="view-title">Settings</h1>
       <div class="settings-card">
-        <h3>Account</h3>
-        <p class="text-dim mb-1">Username: <strong>${escHtml(currentUser.username)}</strong></p>
-      </div>
-
-      <div class="settings-card">
-        <h3>Email & Reminders</h3>
-        <form id="email-settings-form">
-          <div class="form-group">
-            <label for="settings-email">Email Address</label>
-            <input type="email" id="settings-email" value="${escHtml(currentUser.email || '')}" placeholder="your@email.com">
-          </div>
-          <div class="form-group checkbox-group">
+        <h3>Email Preferences</h3>
+        <p class="text-dim mb-1">Current email: ${escHtml(currentUser.email)}</p>
+        <form id="emailForm">
+          <div class="checkbox-group">
             <label>
-              <input type="checkbox" id="settings-email-optin" ${currentUser.emailOptin ? 'checked' : ''}>
-              Send me race weekend reminders
+              <input type="checkbox" name="emailOptin" ${currentUser.emailOptin ? 'checked' : ''}>
+              <span>Send me race weekend reminders</span>
             </label>
           </div>
-          <div id="email-settings-msg" style="display:none"></div>
-          <button type="submit" class="btn btn-primary">Save Email Settings</button>
+          <button type="submit" class="btn btn-primary mt-2">Save Preferences</button>
         </form>
+        <div class="success-msg mt-1" id="emailSuccess" style="display:none;">✓ Preferences saved</div>
       </div>
-
       <div class="settings-card">
-        <h3>Points System</h3>
-        <table class="admin-table">
-          <thead><tr><th>Position</th><th>Race Points</th><th>Sprint Points</th></tr></thead>
-          <tbody>
-            <tr><td>P1 Match</td><td>25 pts</td><td>8 pts</td></tr>
-            <tr><td>P2 Match</td><td>18 pts</td><td>7 pts</td></tr>
-            <tr><td>P3 Match</td><td>15 pts</td><td>6 pts</td></tr>
-          </tbody>
-        </table>
+        <h3>Account</h3>
+        <p class="text-dim">Username: ${escHtml(currentUser.username)}</p>
       </div>
     `;
-
-    $('#email-settings-form').addEventListener('submit', async (e) => {
+    
+    document.getElementById('emailForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const msgEl = $('#email-settings-msg');
-      const email = $('#settings-email').value.trim();
-      const emailOptin = $('#settings-email-optin').checked;
-
-      try {
-        await api('/api/me/email', {
-          method: 'PUT',
-          body: JSON.stringify({ email: email || null, emailOptin })
-        });
-        currentUser.email = email;
-        currentUser.emailOptin = emailOptin;
-        showMsg(msgEl, 'Settings saved!', 'success');
-      } catch (err) {
-        showMsg(msgEl, err.message, 'error');
-      }
+      const form = e.target;
+      const data = {
+        email: currentUser.email,
+        emailOptin: form.emailOptin.checked
+      };
+      
+      await fetch('/api/me/email', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data)
+      });
+      
+      currentUser.emailOptin = data.emailOptin;
+      document.getElementById('emailSuccess').style.display = 'block';
+      setTimeout(() => {
+        document.getElementById('emailSuccess').style.display = 'none';
+      }, 3000);
     });
   }
 
-  // ── Helpers ──
-
-  function formatLockTime(isoString) {
-    const d = new Date(isoString);
-    return d.toLocaleString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short'
-    });
-  }
-
+  // ── Utilities ──
   function escHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -715,6 +696,6 @@
     return div.innerHTML;
   }
 
-  // ── Start ──
-  document.addEventListener('DOMContentLoaded', init);
+  // ── Start App ──
+  init();
 })();
