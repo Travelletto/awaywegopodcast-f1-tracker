@@ -734,8 +734,10 @@ body {
 
 /* Column widths */
 .rank-cell {
-  width: 80px;
+  width: 60px;
   text-align: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 .username-cell {
