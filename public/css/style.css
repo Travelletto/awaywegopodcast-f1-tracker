@@ -916,6 +916,37 @@ body {
     padding: 0.7rem 0.75rem;
     font-size: 0.9rem;
   }
+
+   /* Mobile modal optimizations */
+.modal {
+  padding-top: 40px;
+}
+
+.modal-content {
+  padding: 1.2rem;
+}
+
+.modal-play {
+  font-size: 2rem;
+}
+
+.modal-subtitle {
+  font-size: 1rem;
+}
+
+.modal-content p {
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 0.8rem;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
 }
 
 /* ── Utility ── */
