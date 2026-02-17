@@ -74,6 +74,12 @@ body {
   letter-spacing: -0.5px;
 }
 
+.brand-logo {
+  height: 50px;
+  width: auto;
+  display: block;
+}
+
 .brand-title {
   font-size: 1.5rem;
   font-weight: 700;
