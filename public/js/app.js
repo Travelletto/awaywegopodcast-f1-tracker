@@ -273,13 +273,13 @@
   }
 
   function showPublicNav() {
-    const nav = document.getElementById('nav');
-    nav.innerHTML = `
-      <button class="nav-btn active" data-view="leaderboard">Leaderboard</button>
-      <button class="nav-btn" data-view="login">Sign Up / Log In</button>
-    `;
-    nav.style.display = 'flex';
-  }
+  const nav = document.getElementById('nav');
+  nav.innerHTML = `
+    <button class="nav-btn active" data-view="leaderboard">Leaderboard</button>
+    <button class="nav-btn" data-view="login">Play Along</button>
+  `;
+  nav.style.display = 'flex';
+}
 
   function hideNav() {
     document.getElementById('nav').style.display = 'none';
