@@ -67,7 +67,7 @@ const RACES = [
   { id: 3, name: '🇯🇵 Japanese Grand Prix', location: 'Suzuka', dates: 'Mar 27-29', sprint: false, qualiLock: '2026-03-28T05:00:00Z' },
   { id: 4, name: '🇧🇭 Bahrain Grand Prix', location: 'Sakhir', dates: 'Apr 10-12', sprint: false, qualiLock: '2026-04-11T14:00:00Z' },
   { id: 5, name: '🇸🇦 Saudi Arabian Grand Prix', location: 'Jeddah', dates: 'Apr 17-19', sprint: false, qualiLock: '2026-04-18T14:00:00Z' },
-  { id: 6, name: '🇺🇸 Miami Grand Prix', location: 'Miami', dates: 'May 1-3', sprint: true, sprintQualiLock: '2026-05-01T19:30:00Z', qualiLock: '2026-05-02:20:00:00Z' },
+  { id: 6, name: '🇺🇸 Miami Grand Prix', location: 'Miami', dates: 'May 1-3', sprint: true, sprintQualiLock: '2026-05-01T19:30:00Z', qualiLock: '2026-05-02T20:00:00Z' },
   { id: 7, name: '🇨🇦 Canadian Grand Prix', location: 'Montreal', dates: 'May 22-24', sprint: true, sprintQualiLock: '2026-05-22T19:30:00Z', qualiLock: '2026-05-23T20:00:00Z' },
   { id: 8, name: '🇲🇨 Monaco Grand Prix', location: 'Monte Carlo', dates: 'Jun 5-7', sprint: false, qualiLock: '2026-06-06T13:00:00Z' },
   { id: 9, name: '🇪🇸 Spanish Grand Prix', location: 'Barcelona', dates: 'Jun 12-14', sprint: false, qualiLock: '2026-06-13T13:00:00Z' },
@@ -75,7 +75,7 @@ const RACES = [
   { id: 11, name: '🇬🇧 British Grand Prix', location: 'Silverstone', dates: 'Jul 3-5', sprint: true, sprintQualiLock: '2026-07-03T13:30:00Z', qualiLock: '2026-07-04T14:00:00Z' },
   { id: 12, name: '🇧🇪 Belgian Grand Prix', location: 'Spa', dates: 'Jul 17-19', sprint: false, qualiLock: '2026-07-18T13:00:00Z' },
   { id: 13, name: '🇭🇺 Hungarian Grand Prix', location: 'Budapest', dates: 'Jul 24-26', sprint: false, qualiLock: '2026-07-25T13:00:00Z' },
-  { id: 14, name: '🇳🇱 Dutch Grand Prix', location: 'Zandvoort', dates: 'Aug 21-23', sprint: true, sprintQualiLock: '2026-08-21T12:30:00Z', qualiLock: '2026-08-22:13:00:00Z' },
+  { id: 14, name: '🇳🇱 Dutch Grand Prix', location: 'Zandvoort', dates: 'Aug 21-23', sprint: true, sprintQualiLock: '2026-08-21T12:30:00Z', qualiLock: '2026-08-22T13:00:00Z' },
   { id: 15, name: '🇮🇹 Italian Grand Prix', location: 'Monza', dates: 'Sep 4-6', sprint: false, qualiLock: '2026-09-05T13:00:00Z' },
   { id: 16, name: '🇪🇸 Spanish Grand Prix', location: 'Madrid', dates: 'Sep 11-13', sprint: false, qualiLock: '2026-09-12T13:00:00Z' },
   { id: 17, name: '🇦🇿 Azerbaijan Grand Prix', location: 'Baku', dates: 'Sep 25-27', sprint: false, qualiLock: '2026-09-26T11:00:00Z' },
@@ -88,13 +88,63 @@ const RACES = [
   { id: 24, name: '🇦🇪 Abu Dhabi Grand Prix', location: 'Yas Marina', dates: 'Dec 4-6', sprint: false, qualiLock: '2026-12-05T12:00:00Z' }
 ];
 
+// ── Email Helper (SendGrid) ──
+
+async function sendPasswordResetEmail(email, resetToken, username) {
+  const sendgridApiKey = process.env.SENDGRID_API_KEY;
+  if (!sendgridApiKey) {
+    console.warn('SENDGRID_API_KEY not configured - password reset email not sent');
+    return;
+  }
+  
+  const resetUrl = `${process.env.APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+  
+  try {
+    await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sendgridApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        personalizations: [{
+          to: [{ email }],
+          subject: 'Reset Your F1 Tracker Password'
+        }],
+        from: {
+          email: process.env.FROM_EMAIL || 'noreply@awaywegopodcast.com',
+          name: 'Away We Go Podcast'
+        },
+        content: [{
+          type: 'text/html',
+          value: `
+            <h2>Password Reset Request</h2>
+            <p>Hi ${username},</p>
+            <p>You requested to reset your password for the Away We Go Podcast F1 Prediction Tracker.</p>
+            <p><a href="${resetUrl}" style="background: #E4002B; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a></p>
+            <p>Or copy this link: ${resetUrl}</p>
+            <p>This link expires in 1 hour.</p>
+            <p>If you didn't request this, you can safely ignore this email.</p>
+            <p>– Away We Go Podcast Team</p>
+          `
+        }]
+      })
+    });
+  } catch (err) {
+    console.error('SendGrid error:', err.message);
+  }
+}
+
 // ── Auth Middleware ──
 
 function authMiddleware(req, res, next) {
   const token = req.cookies.f1tracker_token;
   if (!token) return res.status(401).json({ error: 'Not logged in' });
   const user = db.getUserByToken(token);
-  if (!user) return res.status(401).json({ error: 'Invalid session' });
+  if (!user) {
+    res.clearCookie('f1tracker_token');
+    return res.status(401).json({ error: 'Invalid session' });
+  }
   req.user = user;
   next();
 }
@@ -139,30 +189,44 @@ app.get('/api/data', (req, res) => {
 // ── User Auth ──
 
 app.post('/api/signup', (req, res) => {
-  const { username, email, emailOptin } = req.body;
+  const { username, email, password, emailOptin } = req.body;
+  
   if (!username || username.trim().length < 2 || username.trim().length > 30) {
     return res.status(400).json({ error: 'Username must be 2-30 characters' });
   }
   if (!/^[a-zA-Z0-9 _-]+$/.test(username.trim())) {
     return res.status(400).json({ error: 'Username can only contain letters, numbers, spaces, underscores, and hyphens' });
   }
-  const existing = db.getUserByUsername(username.trim());
-  if (existing) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Valid email address is required' });
+  }
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  
+  const existingUsername = db.getUserByUsername(username.trim());
+  if (existingUsername) {
     return res.status(409).json({ error: 'Username already taken' });
   }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Invalid email address' });
+  
+  const existingEmail = db.getUserByEmail(email);
+  if (existingEmail) {
+    return res.status(409).json({ error: 'Email already registered' });
   }
+  
   try {
     const token = uuidv4();
-    db.createUser(username.trim(), token, email, emailOptin);
+    const passwordHash = bcrypt.hashSync(password, 12);
+    db.createUser(username.trim(), email, passwordHash, token, emailOptin);
     const user = db.getUserByToken(token);
+    
     res.cookie('f1tracker_token', token, {
       httpOnly: true,
       maxAge: 365 * 24 * 60 * 60 * 1000,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production'
     });
+    
     res.json({
       id: user.id,
       username: user.username,
@@ -170,15 +234,50 @@ app.post('/api/signup', (req, res) => {
       emailOptin: !!user.email_optin
     });
   } catch (err) {
+    console.error('Signup error:', err);
     res.status(500).json({ error: 'Failed to create account' });
   }
+});
+
+app.post('/api/login', (req, res) => {
+  const { emailOrUsername, password } = req.body;
+  
+  if (!emailOrUsername || !password) {
+    return res.status(400).json({ error: 'Email/username and password required' });
+  }
+  
+  let user = db.getUserByEmail(emailOrUsername);
+  if (!user) {
+    user = db.getUserByUsername(emailOrUsername);
+  }
+  
+  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  
+  res.cookie('f1tracker_token', user.token, {
+    httpOnly: true,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  });
+  
+  res.json({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    emailOptin: !!user.email_optin
+  });
 });
 
 app.get('/api/me', (req, res) => {
   const token = req.cookies.f1tracker_token;
   if (!token) return res.json({ user: null });
   const user = db.getUserByToken(token);
-  if (!user) return res.json({ user: null });
+  if (!user) {
+    res.clearCookie('f1tracker_token');
+    return res.json({ user: null });
+  }
   res.json({
     user: {
       id: user.id,
@@ -201,6 +300,56 @@ app.put('/api/me/email', authMiddleware, (req, res) => {
   }
   db.updateUserEmail(req.user.id, email, emailOptin);
   res.json({ ok: true });
+});
+
+// ── Password Reset ──
+
+app.post('/api/password-reset/request', (req, res) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  
+  const user = db.getUserByEmail(email);
+  if (!user) {
+    return res.json({ ok: true, message: 'If that email exists, a reset link has been sent' });
+  }
+  
+  db.deleteExpiredResetTokens();
+  
+  const resetToken = uuidv4();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  db.createPasswordResetToken(user.id, resetToken, expiresAt);
+  
+  sendPasswordResetEmail(user.email, resetToken, user.username).catch(err => {
+    console.error('Email send error:', err);
+  });
+  
+  res.json({ ok: true, message: 'If that email exists, a reset link has been sent' });
+});
+
+app.post('/api/password-reset/confirm', (req, res) => {
+  const { token, newPassword } = req.body;
+  
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: 'Token and new password required' });
+  }
+  
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  
+  const resetToken = db.getPasswordResetToken(token);
+  if (!resetToken) {
+    return res.status(400).json({ error: 'Invalid or expired reset token' });
+  }
+  
+  const passwordHash = bcrypt.hashSync(newPassword, 12);
+  db.updateUserPassword(resetToken.user_id, passwordHash);
+  db.markTokenAsUsed(token);
+  
+  res.json({ ok: true, message: 'Password updated successfully' });
 });
 
 // ── Predictions ──
