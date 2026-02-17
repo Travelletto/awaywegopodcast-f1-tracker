@@ -216,10 +216,10 @@
   });
 
   // Modal switching links
-  document.getElementById('showLoginLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    showLoginModal();
-  });
+document.getElementById('inlineLoginLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  showLoginModal();
+});
 
   document.getElementById('showSignupLink').addEventListener('click', (e) => {
     e.preventDefault();
