@@ -4,7 +4,7 @@
 
   let currentUser = null;
   let seasonData = null;
-  let currentView = 'calendar';
+  let currentView = 'leaderboard';
 
   const teamColors = {
     'Red Bull': '#1E5BC6',
@@ -22,35 +22,36 @@
 
   // ── Init ──
   async function init() {
-  // Check if user has reset password token in URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const resetToken = urlParams.get('token');
-  if (resetToken) {
-    showResetPasswordModal(resetToken);
-    return;
-  }
+    // Check if user has reset password token in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+    if (resetToken) {
+      showResetPasswordModal(resetToken);
+      return;
+    }
 
-  // Check if user is logged in
-  const meResp = await fetch('/api/me', { credentials: 'include' });
-  const meData = await meResp.json();
-  
-  await loadSeasonData();
-  
-  if (meData.user) {
-    currentUser = meData.user;
-    renderUserArea();
-    showNav();
-    renderView(currentView);
-    attachNavHandlers();
-  } else {
-    // Not logged in - show leaderboard only
-    currentView = 'leaderboard';
-    renderUserArea();
-    showPublicNav();
-    renderView('leaderboard');
-    attachNavHandlers();
+    // Check if user is logged in
+    const meResp = await fetch('/api/me', { credentials: 'include' });
+    const meData = await meResp.json();
+    
+    await loadSeasonData();
+    
+    if (meData.user) {
+      currentUser = meData.user;
+      currentView = 'calendar';
+      renderUserArea();
+      showNav();
+      renderView(currentView);
+      attachNavHandlers();
+    } else {
+      // Not logged in - show leaderboard only
+      currentView = 'leaderboard';
+      renderUserArea();
+      showPublicNav();
+      renderView('leaderboard');
+      attachNavHandlers();
+    }
   }
-}
 
   async function loadSeasonData() {
     const resp = await fetch('/api/data');
@@ -113,6 +114,7 @@
     }
     
     currentUser = result;
+    currentView = 'calendar';
     hideAllModals();
     await loadSeasonData();
     renderUserArea();
@@ -145,6 +147,7 @@
     }
     
     currentUser = result;
+    currentView = 'calendar';
     hideAllModals();
     await loadSeasonData();
     renderUserArea();
@@ -237,7 +240,7 @@
   function renderUserArea() {
     const userArea = document.getElementById('userArea');
     if (!currentUser) {
-      userArea.innerHTML = '<button class="btn btn-small" id="loginBtn">Log In</button>';
+      userArea.innerHTML = '';
       return;
     }
     userArea.innerHTML = `
@@ -250,18 +253,32 @@
   async function logout() {
     await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     currentUser = null;
+    currentView = 'leaderboard';
     hideNav();
-   function showPublicNav() {
-  const nav = document.getElementById('nav');
-  nav.innerHTML = `
-    <button class="nav-btn active" data-view="leaderboard">Leaderboard</button>
-    <button class="nav-btn" data-view="login">Sign Up / Log In</button>
-  `;
-  nav.style.display = 'flex';
-}
+    renderUserArea();
+    showPublicNav();
+    renderView('leaderboard');
+    attachNavHandlers();
+  }
 
   function showNav() {
-    document.getElementById('nav').style.display = 'flex';
+    const nav = document.getElementById('nav');
+    nav.innerHTML = `
+      <button class="nav-btn active" data-view="calendar">Calendar</button>
+      <button class="nav-btn" data-view="predictions">My Predictions</button>
+      <button class="nav-btn" data-view="leaderboard">Leaderboard</button>
+      <button class="nav-btn" data-view="settings">Settings</button>
+    `;
+    nav.style.display = 'flex';
+  }
+
+  function showPublicNav() {
+    const nav = document.getElementById('nav');
+    nav.innerHTML = `
+      <button class="nav-btn active" data-view="leaderboard">Leaderboard</button>
+      <button class="nav-btn" data-view="login">Sign Up / Log In</button>
+    `;
+    nav.style.display = 'flex';
   }
 
   function hideNav() {
@@ -282,39 +299,39 @@
 
   // ── View Rendering ──
   function renderView(view) {
-  const main = document.getElementById('main');
-  switch (view) {
-    case 'calendar':
-      if (!currentUser) {
+    const main = document.getElementById('main');
+    switch (view) {
+      case 'calendar':
+        if (!currentUser) {
+          showSignupModal();
+          return;
+        }
+        renderCalendar(main);
+        break;
+      case 'predictions':
+        if (!currentUser) {
+          showSignupModal();
+          return;
+        }
+        renderMyPredictions(main);
+        break;
+      case 'leaderboard':
+        renderLeaderboard(main);
+        break;
+      case 'settings':
+        if (!currentUser) {
+          showSignupModal();
+          return;
+        }
+        renderSettings(main);
+        break;
+      case 'login':
         showSignupModal();
-        return;
-      }
-      renderCalendar(main);
-      break;
-    case 'predictions':
-      if (!currentUser) {
-        showSignupModal();
-        return;
-      }
-      renderMyPredictions(main);
-      break;
-    case 'leaderboard':
-      renderLeaderboard(main);
-      break;
-    case 'settings':
-      if (!currentUser) {
-        showSignupModal();
-        return;
-      }
-      renderSettings(main);
-      break;
-    case 'login':
-      showSignupModal();
-      break;
-    default:
-      main.innerHTML = '<p class="loading">Unknown view</p>';
+        break;
+      default:
+        main.innerHTML = '<p class="loading">Unknown view</p>';
+    }
   }
-}
 
   // ── Calendar View ──
   function renderCalendar(container) {
