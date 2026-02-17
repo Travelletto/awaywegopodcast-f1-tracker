@@ -149,6 +149,87 @@ body {
   width: 100%;
 }
 
+/* ── Calendar + Sidebar Layout ── */
+
+.calendar-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.calendar-main {
+  min-width: 0;
+}
+
+.calendar-sidebar {
+  position: sticky;
+  top: 100px;
+  background: var(--f1-card);
+  border: 1px solid var(--f1-border);
+  border-radius: var(--radius);
+  padding: 1.2rem;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.sidebar-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--f1-text);
+}
+
+.sidebar-leaderboard {
+  list-style: none;
+  margin-bottom: 1rem;
+}
+
+.sidebar-leaderboard li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--f1-border);
+  font-size: 1rem;
+}
+
+.sidebar-leaderboard li:last-child {
+  border-bottom: none;
+}
+
+.sidebar-rank {
+  min-width: 30px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sidebar-username {
+  flex: 1;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-points {
+  font-weight: 700;
+  color: var(--f1-gold);
+  min-width: 50px;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .calendar-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .calendar-sidebar {
+    position: static;
+    max-height: none;
+  }
+}
+
 .view-title {
   font-size: 1.8rem;
   font-weight: 700;
