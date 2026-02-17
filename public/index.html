@@ -3,103 +3,147 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Away We Go Podcast - F1 Prediction Tracker 2026</title>
+  <title>Away We Go Podcast - F1 Predictions</title>
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
+
   <!-- Header -->
-  <header class="header">
+  <header class="header" id="header">
     <div class="header-inner">
       <div class="brand">
         <div class="brand-icon">F1</div>
         <div>
-          <h1 class="brand-title">Away We Go Podcast</h1>
-          <p class="brand-subtitle">2026 F1 Prediction Tracker</p>
+          <div class="brand-title">Away We Go Podcast</div>
+          <div class="brand-subtitle">2026 F1 Prediction Tracker</div>
         </div>
       </div>
-      <div id="user-area" class="user-area"></div>
+      <div class="user-area" id="userArea"></div>
     </div>
   </header>
 
   <!-- Navigation -->
-  <nav class="nav" id="main-nav">
+  <nav class="nav" id="nav" style="display:none;">
     <button class="nav-btn active" data-view="calendar">Calendar</button>
+    <button class="nav-btn" data-view="predictions">My Predictions</button>
     <button class="nav-btn" data-view="leaderboard">Leaderboard</button>
-    <button class="nav-btn" data-view="my-predictions">My Predictions</button>
     <button class="nav-btn" data-view="settings">Settings</button>
   </nav>
 
   <!-- Main Content -->
-  <main class="main" id="app">
-
-    <!-- Signup Modal -->
-    <div id="signup-modal" class="modal" style="display:none">
-      <div class="modal-content">
-       <h2 class="modal-heading">
-  <span class="modal-play">PLAY</span>
-  <span class="modal-subtitle">Away We Go Podcast - F1 Predictions</span>
-</h2>
-        <p>Pick a username to start making your F1 predictions</p>
-        <form id="signup-form">
-          <div class="form-group">
-            <label for="signup-username">Username</label>
-            <input type="text" id="signup-username" placeholder="Enter your username" required minlength="2" maxlength="30" autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label for="signup-email">Email <span class="label-hint">(optional - for race reminders)</span></label>
-            <input type="email" id="signup-email" placeholder="your@email.com" autocomplete="email">
-          </div>
-          <div class="form-group checkbox-group">
-            <label>
-              <input type="checkbox" id="signup-email-optin">
-              Send me race weekend reminders
-            </label>
-          </div>
-          <div id="signup-error" class="error-msg" style="display:none"></div>
-          <button type="submit" class="btn btn-primary btn-full">Start Predicting</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Calendar View -->
-    <div id="view-calendar" class="view">
-      <h2 class="view-title">2026 Formula 1 World Championship Calendar</h2>
-      <div id="race-list" class="race-list"></div>
-    </div>
-
-    <!-- Prediction View -->
-    <div id="view-prediction" class="view" style="display:none">
-      <button class="btn btn-back" id="btn-back-calendar">&larr; Back to Calendar</button>
-      <div id="prediction-content"></div>
-    </div>
-
-    <!-- Leaderboard View -->
-    <div id="view-leaderboard" class="view" style="display:none">
-      <h2 class="view-title">Leaderboard</h2>
-      <div id="leaderboard-content"></div>
-    </div>
-
-    <!-- My Predictions View -->
-    <div id="view-my-predictions" class="view" style="display:none">
-      <h2 class="view-title">My Predictions</h2>
-      <div id="my-predictions-content"></div>
-    </div>
-
-    <!-- Settings View -->
-    <div id="view-settings" class="view" style="display:none">
-      <h2 class="view-title">Settings</h2>
-      <div id="settings-content"></div>
-    </div>
-
-  </main>
+  <main class="main" id="main"></main>
 
   <!-- Footer -->
   <footer class="footer">
-    <p>&copy; 2026 Away We Go Podcast &mdash; F1 Prediction Tracker</p>
-    <p><a href="/admin" class="footer-link">Admin Panel</a></p>
+    <p>&copy; 2026 Away We Go Podcast | <a href="#" class="footer-link">Listen to the Show</a></p>
   </footer>
+
+  <!-- Signup Modal -->
+  <div class="modal" id="signupModal" style="display:none;">
+    <div class="modal-content">
+      <h2 class="modal-heading">
+        <span class="modal-play">PLAY</span><br>
+        <span class="modal-subtitle">Away We Go Podcast - F1 Predictions</span>
+      </h2>
+      <p>Create your account to start making predictions</p>
+      <div class="error-msg" id="signupError" style="display:none;"></div>
+      <form id="signupForm">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="Enter your username" required>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label>Password <span class="label-hint">(minimum 8 characters)</span></label>
+          <input type="password" name="password" placeholder="Create a password" required minlength="8">
+        </div>
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" name="emailOptin">
+            <span>Send me race weekend reminders</span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Start Predicting</button>
+      </form>
+      <p class="text-center mt-2">
+        <a href="#" id="showLoginLink" class="footer-link">Already have an account? Log in</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" id="loginModal" style="display:none;">
+    <div class="modal-content">
+      <h2 class="modal-heading">
+        <span class="modal-play">WELCOME BACK</span><br>
+        <span class="modal-subtitle">Away We Go Podcast - F1 Predictions</span>
+      </h2>
+      <p>Log in to your account</p>
+      <div class="error-msg" id="loginError" style="display:none;"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Email or Username</label>
+          <input type="text" name="emailOrUsername" placeholder="your@email.com or username" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Log In</button>
+      </form>
+      <p class="text-center mt-2">
+        <a href="#" id="showForgotPasswordLink" class="footer-link">Forgot password?</a>
+      </p>
+      <p class="text-center mt-1">
+        <a href="#" id="showSignupLink" class="footer-link">Don't have an account? Sign up</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div class="modal" id="forgotPasswordModal" style="display:none;">
+    <div class="modal-content">
+      <h2>Reset Password</h2>
+      <p>Enter your email and we'll send you a reset link</p>
+      <div class="error-msg" id="forgotPasswordError" style="display:none;"></div>
+      <div class="success-msg" id="forgotPasswordSuccess" style="display:none;"></div>
+      <form id="forgotPasswordForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" placeholder="your@email.com" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Send Reset Link</button>
+      </form>
+      <p class="text-center mt-2">
+        <a href="#" id="backToLoginLink" class="footer-link">Back to login</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal (shown when user clicks reset link in email) -->
+  <div class="modal" id="resetPasswordModal" style="display:none;">
+    <div class="modal-content">
+      <h2>Set New Password</h2>
+      <p>Enter your new password</p>
+      <div class="error-msg" id="resetPasswordError" style="display:none;"></div>
+      <div class="success-msg" id="resetPasswordSuccess" style="display:none;"></div>
+      <form id="resetPasswordForm">
+        <input type="hidden" name="token" id="resetToken">
+        <div class="form-group">
+          <label>New Password <span class="label-hint">(minimum 8 characters)</span></label>
+          <input type="password" name="newPassword" placeholder="Enter new password" required minlength="8">
+        </div>
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <input type="password" name="confirmPassword" placeholder="Confirm new password" required minlength="8">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Update Password</button>
+      </form>
+    </div>
+  </div>
 
   <script src="/js/app.js"></script>
 </body>
