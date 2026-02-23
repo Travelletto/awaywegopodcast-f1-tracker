@@ -13,9 +13,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get("/leaderboard-image.png", (req, res) => {
-  try {
-    console.log("HIT /leaderboard-image.png");
-    const leaderboard = db.calculateLeaderboard().slice(0, 10);
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-store");
+  return res.sendFile(path.join(__dirname, "leaderboard-image.png"));
+});
 
     // Canvas size (you can tweak later)
     const width = 900;
