@@ -11,6 +11,16 @@ const db = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.get("/leaderboard-image.png", async (req, res) => {
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-store");
+
+  // TEMP placeholder: serve a real PNG file from your project
+  // Put a PNG file in your project root called "leaderboard-image.png"
+  // (We’ll automate generating it from the live leaderboard next.)
+  return res.sendFile(path.join(__dirname, "leaderboard-image.png"));
+});
+
 // ── Middleware ──
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
