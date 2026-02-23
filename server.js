@@ -6,7 +6,6 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
-const { createCanvas } = require("canvas");
 const db = require('./database');
 
 const app = express();
@@ -18,72 +17,6 @@ app.get("/leaderboard-image.png", (req, res) => {
   return res.sendFile(path.join(__dirname, "leaderboard-image.png"));
 });
 
-    // Canvas size (you can tweak later)
-    const width = 900;
-    const rowH = 54;
-    const headerH = 80;
-    const padding = 40;
-    const height = headerH + padding + leaderboard.length * rowH + padding;
-
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-
-    // Background
-    ctx.fillStyle = "#0b0b0f";
-    ctx.fillRect(0, 0, width, height);
-
-    // Title
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 34px Arial";
-    ctx.fillText("AWG F1 Tracker — Top 10 Leaderboard", padding, 55);
-
-    // Timestamp (Perth time)
-    const now = new Date();
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.font = "18px Arial";
-    ctx.fillText(`Updated: ${now.toLocaleString("en-AU", { timeZone: "Australia/Perth" })}`, padding, 80);
-
-    // Table header
-    const startY = headerH + 20;
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.fillRect(padding, startY, width - padding * 2, 44);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 18px Arial";
-    ctx.fillText("Rank", padding + 10, startY + 28);
-    ctx.fillText("Player", padding + 110, startY + 28);
-    ctx.fillText("Points", width - padding - 120, startY + 28);
-
-    // Rows
-    ctx.font = "20px Arial";
-    leaderboard.forEach((row, i) => {
-      const y = startY + 44 + i * rowH;
-
-      // zebra stripe
-      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)";
-      ctx.fillRect(padding, y, width - padding * 2, rowH);
-
-      ctx.fillStyle = "#ffffff";
-
-      // These property names depend on what db.calculateLeaderboard() returns.
-      // We handle a few possibilities safely:
-      const rank = row.rank ?? (i + 1);
-      const name = row.username ?? row.name ?? row.player ?? `Player ${i + 1}`;
-      const points = row.totalPoints ?? row.points ?? 0;
-
-      ctx.fillText(String(rank), padding + 10, y + 34);
-      ctx.fillText(String(name).slice(0, 28), padding + 110, y + 34);
-      ctx.fillText(String(points), width - padding - 120, y + 34);
-    });
-
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "no-store");
-    return res.send(canvas.toBuffer("image/png"));
-  } catch (err) {
-    console.error("leaderboard-image error:", err);
-    return res.status(500).send("Failed to generate leaderboard image");
-  }
-});
 
 // ── Middleware ──
 app.use(cors({ origin: true, credentials: true }));
