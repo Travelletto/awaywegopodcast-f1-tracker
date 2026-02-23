@@ -7,7 +7,7 @@
   "start": "node server.js",
   "dev": "node --watch server.js",
   "setup-admin": "node setup-admin.js"
-}
+},
   "dependencies": {
     "better-sqlite3": "^11.7.0",
     "bcryptjs": "^2.4.3",
