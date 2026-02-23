@@ -32,7 +32,7 @@ function initTables() {
       email_optin INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-    
+
     CREATE TABLE IF NOT EXISTS predictions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -46,7 +46,7 @@ function initTables() {
       UNIQUE(user_id, race_id, prediction_type),
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
-    
+
     CREATE TABLE IF NOT EXISTS results (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       race_id INTEGER NOT NULL,
@@ -57,13 +57,13 @@ function initTables() {
       entered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(race_id, result_type)
     );
-    
+
     CREATE TABLE IF NOT EXISTS admin (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL
     );
-    
+
     CREATE TABLE IF NOT EXISTS admin_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       admin_id INTEGER NOT NULL,
@@ -72,7 +72,7 @@ function initTables() {
       expires_at DATETIME NOT NULL,
       FOREIGN KEY (admin_id) REFERENCES admin(id)
     );
-    
+
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -82,7 +82,7 @@ function initTables() {
       used INTEGER DEFAULT 0,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
-    
+
     CREATE INDEX IF NOT EXISTS idx_predictions_user ON predictions(user_id);
     CREATE INDEX IF NOT EXISTS idx_predictions_race ON predictions(race_id);
     CREATE INDEX IF NOT EXISTS idx_results_race ON results(race_id);
@@ -114,6 +114,11 @@ function getUserByEmail(email) {
 function updateUserEmail(userId, email, emailOptin) {
   return db.prepare('UPDATE users SET email = ?, email_optin = ? WHERE id = ?')
     .run(email, emailOptin ? 1 : 0, userId);
+}
+
+function updateUserEmailOptin(userId, emailOptin) {
+  return db.prepare('UPDATE users SET email_optin = ? WHERE id = ?')
+    .run(emailOptin ? 1 : 0, userId);
 }
 
 function updateUserPassword(userId, passwordHash) {
@@ -208,38 +213,36 @@ function calculateLeaderboard() {
   const users = db.prepare('SELECT id, username FROM users ORDER BY username').all();
   const results = getAllResults();
   const predictions = db.prepare('SELECT * FROM predictions').all();
-  
-  // Build a results lookup: { `${race_id}_${result_type}`: { p1, p2, p3 } }
+
   const resultsMap = {};
   for (const r of results) {
     resultsMap[`${r.race_id}_${r.result_type}`] = r;
   }
-  
-  // Build a predictions lookup: { `${user_id}_${race_id}_${type}`: { p1, p2, p3 } }
+
   const predMap = {};
   for (const p of predictions) {
     predMap[`${p.user_id}_${p.race_id}_${p.prediction_type}`] = p;
   }
-  
+
   const leaderboard = users.map(user => {
     let totalPoints = 0;
     let racePoints = 0;
     let sprintPoints = 0;
     let correctPredictions = 0;
     let totalPredictions = 0;
-    
+
     for (const result of results) {
       const key = `${user.id}_${result.race_id}_${result.result_type}`;
       const pred = predMap[key];
       if (!pred) continue;
-      
+
       totalPredictions++;
       const pointsTable = result.result_type === 'sprint' ? SPRINT_POINTS : RACE_POINTS;
-      
+
       if (pred.p1 === result.p1) { totalPoints += pointsTable.p1; correctPredictions++; }
       if (pred.p2 === result.p2) { totalPoints += pointsTable.p2; correctPredictions++; }
       if (pred.p3 === result.p3) { totalPoints += pointsTable.p3; correctPredictions++; }
-      
+
       if (result.result_type === 'sprint') {
         if (pred.p1 === result.p1) sprintPoints += pointsTable.p1;
         if (pred.p2 === result.p2) sprintPoints += pointsTable.p2;
@@ -250,7 +253,7 @@ function calculateLeaderboard() {
         if (pred.p3 === result.p3) racePoints += pointsTable.p3;
       }
     }
-    
+
     return {
       userId: user.id,
       username: user.username,
@@ -261,11 +264,9 @@ function calculateLeaderboard() {
       totalPredictions
     };
   });
-  
-  // Sort by total points descending, then by correct predictions descending as tiebreaker
+
   leaderboard.sort((a, b) => b.totalPoints - a.totalPoints || b.correctPredictions - a.correctPredictions);
-  
-  // Assign ranks (handle ties)
+
   let rank = 1;
   for (let i = 0; i < leaderboard.length; i++) {
     if (i > 0 && leaderboard[i].totalPoints === leaderboard[i - 1].totalPoints) {
@@ -275,7 +276,7 @@ function calculateLeaderboard() {
     }
     rank++;
   }
-  
+
   return leaderboard;
 }
 
@@ -286,7 +287,10 @@ function getAdmin(username) {
 }
 
 function createAdmin(username, passwordHash) {
-  return db.prepare('INSERT OR REPLACE INTO admin (username, password_hash) VALUES (?, ?)').run(username, passwordHash);
+  return db.prepare(
+    `INSERT INTO admin (username, password_hash) VALUES (?, ?)
+     ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash`
+  ).run(username, passwordHash);
 }
 
 function createAdminSession(adminId, token, expiresAt) {
@@ -301,7 +305,6 @@ function deleteExpiredAdminSessions() {
   return db.prepare('DELETE FROM admin_sessions WHERE expires_at <= CURRENT_TIMESTAMP').run();
 }
 
-// Get users with email opt-in for MailerLite updates
 function getEmailOptInUsers() {
   return db.prepare('SELECT id, username, email FROM users WHERE email_optin = 1 AND email IS NOT NULL').all();
 }
@@ -313,6 +316,7 @@ module.exports = {
   getUserByUsername,
   getUserByEmail,
   updateUserEmail,
+  updateUserEmailOptin,
   updateUserPassword,
   getAllUsers,
   createPasswordResetToken,
