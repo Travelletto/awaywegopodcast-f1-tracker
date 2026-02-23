@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 
 app.get("/leaderboard-image.png", (req, res) => {
   res.setHeader("Content-Type", "image/png");
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Cache-Control", "no-store"); // keep this exact line
   return res.sendFile(path.join(__dirname, "leaderboard-image.png"));
 });
 
