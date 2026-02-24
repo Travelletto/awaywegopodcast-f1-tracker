@@ -4,14 +4,11 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./database');
 
-// Register DejaVu Sans fonts copied to fonts/ dir during Railway build
-const FONTS_DIR = path.join(__dirname, 'fonts');
-if (fs.existsSync(path.join(FONTS_DIR, 'DejaVuSans.ttf'))) {
-  registerFont(path.join(FONTS_DIR, 'DejaVuSans.ttf'), { family: 'DejaVu Sans' });
-}
-if (fs.existsSync(path.join(FONTS_DIR, 'DejaVuSans-Bold.ttf'))) {
-  registerFont(path.join(FONTS_DIR, 'DejaVuSans-Bold.ttf'), { family: 'DejaVu Sans', weight: 'bold' });
-}
+// Register DejaVu Sans fonts bundled with the repo
+const regularFont = path.join(__dirname, 'dejavu-sans.book.ttf');
+const boldFont    = path.join(__dirname, 'dejavu-sans.bold.ttf');
+if (fs.existsSync(regularFont)) registerFont(regularFont, { family: 'DejaVu Sans' });
+if (fs.existsSync(boldFont))    registerFont(boldFont,    { family: 'DejaVu Sans', weight: 'bold' });
 
 const OUTPUT_PATH = path.join(__dirname, 'leaderboard-image.png');
 
