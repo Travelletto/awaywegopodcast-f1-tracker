@@ -57,17 +57,17 @@ async function generateLeaderboardImage() {
   ctx.fillStyle = RED;
   ctx.fillRect(0, 0, WIDTH, TITLE_H);
   ctx.fillStyle = WHITE;
-  ctx.font = 'bold 22px sans-serif';
+  ctx.font = 'bold 22px "DejaVu Sans"';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Away We Go Podcast  ·  F1 2026 Prediction Leaderboard', WIDTH / 2, TITLE_H / 2);
+  ctx.fillText('Away We Go Podcast  \u00b7  F1 2026 Prediction Leaderboard', WIDTH / 2, TITLE_H / 2);
 
   const hdrY = TITLE_H;
   ctx.fillStyle = HEADER_BG;
   ctx.fillRect(0, hdrY, WIDTH, COL_HDR_H);
 
   ctx.fillStyle = MUTED;
-  ctx.font = 'bold 13px sans-serif';
+  ctx.font = 'bold 13px "DejaVu Sans"';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   const hdrMid = hdrY + COL_HDR_H / 2;
@@ -89,17 +89,17 @@ async function generateLeaderboardImage() {
 
     const rc = rankColor(e.rank);
     ctx.fillStyle = rc;
-    ctx.font = e.rank <= 3 ? 'bold 18px sans-serif' : '16px sans-serif';
+    ctx.font = e.rank <= 3 ? 'bold 18px "DejaVu Sans"' : '16px "DejaVu Sans"';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(e.rank), COL_RANK, mid);
 
     ctx.fillStyle = WHITE;
-    ctx.font = '16px sans-serif';
+    ctx.font = '16px "DejaVu Sans"';
     ctx.fillText(e.username, COL_PLAYER, mid);
 
     ctx.fillStyle = rc;
-    ctx.font = 'bold 16px sans-serif';
+    ctx.font = 'bold 16px "DejaVu Sans"';
     ctx.textAlign = 'right';
     ctx.fillText(`${e.totalPoints} pts`, COL_POINTS, mid);
 
@@ -111,7 +111,7 @@ async function generateLeaderboardImage() {
   ctx.fillStyle = HEADER_BG;
   ctx.fillRect(0, ftY, WIDTH, FOOTER_H);
   ctx.fillStyle = MUTED;
-  ctx.font = '12px sans-serif';
+  ctx.font = '12px "DejaVu Sans"';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(`Updated ${new Date().toUTCString()}`, WIDTH / 2, ftY + FOOTER_H / 2);
