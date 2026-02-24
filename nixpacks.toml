@@ -1,2 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "cairo", "pango", "libpng", "libjpeg", "giflib", "librsvg", "pkg-config", "fontconfig"]
+nixPkgs = ["nodejs_20", "cairo", "pango", "libpng", "libjpeg", "giflib", "librsvg", "pkg-config", "fontconfig", "dejavu_fonts"]
+
+[phases.build]
+cmds = ["fc-cache -f -v", "npm install"]
