@@ -1,14 +1,15 @@
 // generateLeaderboardImage.js - Renders the leaderboard as a PNG using canvas
-const { registerFont, createCanvas } = require('canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 const db = require('./database');
 
-// Register DejaVu Sans fonts bundled with the repo
-const regularFont = path.join(__dirname, 'dejavu-sans.book.ttf');
-const boldFont    = path.join(__dirname, 'dejavu-sans.bold.ttf');
-if (fs.existsSync(regularFont)) registerFont(regularFont, { family: 'DejaVu Sans' });
-if (fs.existsSync(boldFont))    registerFont(boldFont,    { family: 'DejaVu Sans', weight: 'bold' });
+// Register DejaVu Sans fonts from the fonts/ directory (copied during build)
+const fontsDir = path.join(__dirname, 'fonts');
+const regularFont = path.join(fontsDir, 'DejaVuSans.ttf');
+const boldFont    = path.join(fontsDir, 'DejaVuSans-Bold.ttf');
+if (fs.existsSync(regularFont)) GlobalFonts.registerFromPath(regularFont, 'DejaVu Sans');
+if (fs.existsSync(boldFont))    GlobalFonts.registerFromPath(boldFont, 'DejaVu Sans');
 
 const OUTPUT_PATH = path.join(__dirname, 'leaderboard-image.png');
 
@@ -60,7 +61,7 @@ async function generateLeaderboardImage() {
   ctx.font = 'bold 22px "DejaVu Sans"';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Away We Go Podcast  \u00b7  F1 2026 Prediction Leaderboard', WIDTH / 2, TITLE_H / 2);
+  ctx.fillText('Away We Go Podcast  ·  F1 2026 Prediction Leaderboard', WIDTH / 2, TITLE_H / 2);
 
   const hdrY = TITLE_H;
   ctx.fillStyle = HEADER_BG;

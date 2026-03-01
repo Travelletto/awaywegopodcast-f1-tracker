@@ -240,6 +240,12 @@ app.post('/api/signup', (req, res) => {
       secure: process.env.NODE_ENV === 'production'
     });
 
+    // Sync to MailerLite immediately if user opted in with an email
+    if (email && emailOptin) {
+      syncUserToMailerLite({ email, username: username.trim() }, null)
+        .catch(err => console.error('MailerLite signup sync error:', err.message));
+    }
+
     res.json({
       id: user.id,
       username: user.username,
@@ -316,6 +322,17 @@ app.put('/api/me/email', authMiddleware, (req, res) => {
   } else {
     db.updateUserEmailOptin(req.user.id, emailOptin);
   }
+
+  // Sync to MailerLite if user opted in with an email
+  const updatedEmail = email || req.user.email;
+  const updatedOptin = emailOptin !== undefined ? emailOptin : req.user.email_optin;
+  if (updatedEmail && updatedOptin) {
+    const leaderboard = db.calculateLeaderboard();
+    const stats = leaderboard.find(l => l.userId === req.user.id);
+    syncUserToMailerLite({ email: updatedEmail, username: req.user.username }, stats)
+      .catch(err => console.error('MailerLite email update sync error:', err.message));
+  }
+
   res.json({ ok: true });
 });
 
@@ -534,10 +551,45 @@ app.get('/api/admin/leaderboard', adminAuthMiddleware, (req, res) => {
 
 // ── MailerLite Integration ──
 
-async function updateMailerLite() {
+// Sync a single user to MailerLite (called on signup and email update)
+async function syncUserToMailerLite(user, stats) {
   const apiKey = process.env.MAILERLITE_API_KEY;
   const groupId = process.env.MAILERLITE_GROUP_ID;
   if (!apiKey) return;
+  if (!user.email) return;
+
+  const body = {
+    email: user.email,
+    fields: {
+      name: user.username,
+      f1_points: String(stats?.totalPoints ?? 0),
+      f1_rank: String(stats?.rank ?? '-')
+    }
+  };
+  if (groupId) {
+    body.groups = [groupId];
+  }
+
+  const response = await fetch('https://connect.mailerlite.com/api/subscribers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`MailerLite API ${response.status}: ${errBody}`);
+  }
+}
+
+// Sync all opted-in users to MailerLite (called after results entry)
+async function updateMailerLite() {
+  const apiKey = process.env.MAILERLITE_API_KEY;
+  if (!apiKey) return;
+
   const users = db.getEmailOptInUsers();
   if (users.length === 0) return;
   const leaderboard = db.calculateLeaderboard();
@@ -548,25 +600,7 @@ async function updateMailerLite() {
   for (const user of users) {
     const stats = leaderboardMap[user.id] || { totalPoints: 0, rank: '-' };
     try {
-      const body = {
-        email: user.email,
-        fields: {
-          name: user.username,
-          f1_points: String(stats.totalPoints),
-          f1_rank: String(stats.rank)
-        }
-      };
-      if (groupId) {
-        body.groups = [groupId];
-      }
-      await fetch('https://connect.mailerlite.com/api/subscribers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(body)
-      });
+      await syncUserToMailerLite(user, stats);
     } catch (err) {
       console.error(`MailerLite update failed for ${user.username}:`, err.message);
     }

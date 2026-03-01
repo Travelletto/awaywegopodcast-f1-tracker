@@ -426,24 +426,36 @@
     }
   }
 
-  // MailerLite sync button
-  document.addEventListener('DOMContentLoaded', () => {
-    const syncBtn = $('#btn-mailerlite-sync');
-    if (syncBtn) {
-      syncBtn.addEventListener('click', async () => {
-        syncBtn.disabled = true;
-        syncBtn.textContent = 'Syncing...';
+  // MailerLite sync buttons (appear in Users tab and Leaderboard tab)
+  function setupMailerLiteSyncButtons() {
+    const syncBtns = $$('.mailerlite-sync-btn');
+    const statusEls = $$('.mailerlite-sync-status');
+
+    syncBtns.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        // Disable all sync buttons and show syncing state
+        syncBtns.forEach(b => { b.disabled = true; b.textContent = 'Syncing...'; });
+        statusEls.forEach(s => { s.textContent = ''; });
+
         try {
           await api('/api/admin/mailerlite-sync', { method: 'POST' });
-          syncBtn.textContent = 'Sync Complete!';
-          setTimeout(() => { syncBtn.textContent = 'Sync MailerLite'; syncBtn.disabled = false; }, 2000);
+          syncBtns.forEach(b => b.textContent = 'Sync Complete!');
+          statusEls.forEach(s => { s.textContent = 'All opted-in users synced to MailerLite'; s.style.color = 'var(--f1-success)'; });
+          setTimeout(() => {
+            syncBtns.forEach(b => { b.textContent = 'Sync MailerLite'; b.disabled = false; });
+          }, 3000);
         } catch (err) {
-          syncBtn.textContent = 'Sync Failed';
-          setTimeout(() => { syncBtn.textContent = 'Sync MailerLite'; syncBtn.disabled = false; }, 2000);
+          syncBtns.forEach(b => b.textContent = 'Sync Failed');
+          statusEls.forEach(s => { s.textContent = err.message; s.style.color = '#ff6b6b'; });
+          setTimeout(() => {
+            syncBtns.forEach(b => { b.textContent = 'Sync MailerLite'; b.disabled = false; });
+          }, 3000);
         }
       });
-    }
-  });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', setupMailerLiteSyncButtons);
 
   function showMsg(el, text, type) {
     el.textContent = text;
