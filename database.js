@@ -10,6 +10,7 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 const DB_PATH = path.join(dataDir, 'f1tracker.db');
+console.log(`Database path: ${DB_PATH}`);
 
 let db;
 
