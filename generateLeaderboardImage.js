@@ -1,5 +1,5 @@
 // generateLeaderboardImage.js - Renders the leaderboard as a PNG using canvas
-const { createCanvas } = require('canvas');
+const { createCanvas } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 const db = require('./database');
