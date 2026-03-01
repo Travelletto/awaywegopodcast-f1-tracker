@@ -2,17 +2,19 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'data', 'f1tracker.db');
+const fs = require('fs');
+
+// Use Railway persistent volume if available, otherwise fall back to local data/ dir
+const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+const DB_PATH = path.join(dataDir, 'f1tracker.db');
 
 let db;
 
 function getDb() {
   if (!db) {
-    const fs = require('fs');
-    const dataDir = path.join(__dirname, 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
