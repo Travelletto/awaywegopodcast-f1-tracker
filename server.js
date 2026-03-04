@@ -10,6 +10,7 @@ const db = require('./database');
 const { generateLeaderboardImage } = require('./generateLeaderboardImage');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 app.get("/leaderboard-image.png", async (req, res) => {
@@ -103,14 +104,14 @@ const RACES = [
 
 // ── Email Helper (SendGrid) ──
 
-async function sendPasswordResetEmail(email, resetToken, username) {
+async function sendPasswordResetEmail(email, resetToken, username, baseUrl) {
   const sendgridApiKey = process.env.SENDGRID_API_KEY;
   if (!sendgridApiKey) {
     console.warn('SENDGRID_API_KEY not configured - password reset email not sent');
     return;
   }
 
-  const resetUrl = `${process.env.APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
   try {
     await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -356,7 +357,8 @@ app.post('/api/password-reset/request', (req, res) => {
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   db.createPasswordResetToken(user.id, resetToken, expiresAt);
 
-  sendPasswordResetEmail(user.email, resetToken, user.username).catch(err => {
+  const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+  sendPasswordResetEmail(user.email, resetToken, user.username, baseUrl).catch(err => {
     console.error('Email send error:', err);
   });
 
