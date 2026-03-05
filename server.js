@@ -543,7 +543,9 @@ app.get('/api/admin/predictions/:raceId', adminAuthMiddleware, (req, res) => {
   const raceId = parseInt(req.params.raceId, 10);
   const racePreds = db.getRacePredictions(raceId, 'race');
   const sprintPreds = db.getRacePredictions(raceId, 'sprint');
-  res.json({ race: racePreds, sprint: sprintPreds });
+  const missingRace = db.getUsersWithoutPrediction(raceId, 'race');
+  const missingSprint = db.getUsersWithoutPrediction(raceId, 'sprint');
+  res.json({ race: racePreds, sprint: sprintPreds, missingRace, missingSprint });
 });
 
 app.get('/api/admin/leaderboard', adminAuthMiddleware, (req, res) => {
