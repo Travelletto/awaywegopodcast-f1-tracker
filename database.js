@@ -10,6 +10,7 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 const DB_PATH = path.join(dataDir, 'f1tracker.db');
+console.log(`Database path: ${DB_PATH}`);
 
 let db;
 
@@ -130,6 +131,17 @@ function updateUserPassword(userId, passwordHash) {
 
 function getAllUsers() {
   return db.prepare('SELECT id, username, email, email_optin, created_at FROM users ORDER BY username').all();
+}
+
+function getUsersWithoutPrediction(raceId, type) {
+  return db.prepare(`
+    SELECT u.id, u.username FROM users u
+    WHERE u.id NOT IN (
+      SELECT p.user_id FROM predictions p
+      WHERE p.race_id = ? AND p.prediction_type = ?
+    )
+    ORDER BY u.username
+  `).all(raceId, type);
 }
 
 // ── Password Reset Tokens ──
@@ -321,6 +333,7 @@ module.exports = {
   updateUserEmailOptin,
   updateUserPassword,
   getAllUsers,
+  getUsersWithoutPrediction,
   createPasswordResetToken,
   getPasswordResetToken,
   markTokenAsUsed,

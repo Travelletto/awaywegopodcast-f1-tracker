@@ -321,7 +321,7 @@
       let html = '';
 
       // Race predictions
-      html += '<h3 class="mt-2 mb-1">Race Predictions</h3>';
+      html += `<h3 class="mt-2 mb-1">Race Predictions (${data.race.length} submitted)</h3>`;
       if (data.race.length === 0) {
         html += '<p class="text-dim">No race predictions</p>';
       } else {
@@ -342,9 +342,14 @@
         `;
       }
 
+      // Missing race predictions
+      if (data.missingRace && data.missingRace.length > 0) {
+        html += `<p class="text-dim" style="margin-top:0.5rem">Not yet predicted (${data.missingRace.length}): ${data.missingRace.map(u => escHtml(u.username)).join(', ')}</p>`;
+      }
+
       // Sprint predictions
       if (race && race.sprint) {
-        html += '<h3 class="mt-2 mb-1">Sprint Predictions</h3>';
+        html += `<h3 class="mt-2 mb-1">Sprint Predictions (${data.sprint.length} submitted)</h3>`;
         if (data.sprint.length === 0) {
           html += '<p class="text-dim">No sprint predictions</p>';
         } else {
@@ -363,6 +368,11 @@
               </tbody>
             </table>
           `;
+        }
+
+        // Missing sprint predictions
+        if (data.missingSprint && data.missingSprint.length > 0) {
+          html += `<p class="text-dim" style="margin-top:0.5rem">Not yet predicted (${data.missingSprint.length}): ${data.missingSprint.map(u => escHtml(u.username)).join(', ')}</p>`;
         }
       }
 
