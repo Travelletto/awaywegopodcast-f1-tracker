@@ -539,6 +539,31 @@ app.get('/api/admin/users', adminAuthMiddleware, (req, res) => {
   res.json({ users });
 });
 
+app.put('/api/admin/users/:userId/username', adminAuthMiddleware, (req, res) => {
+  const userId = parseInt(req.params.userId, 10);
+  const { username } = req.body;
+
+  if (!username || username.trim().length < 2 || username.trim().length > 30) {
+    return res.status(400).json({ error: 'Username must be 2-30 characters' });
+  }
+  if (!/^[a-zA-Z0-9 _-]+$/.test(username.trim())) {
+    return res.status(400).json({ error: 'Username can only contain letters, numbers, spaces, underscores, and hyphens' });
+  }
+
+  const existing = db.getUserByUsername(username.trim());
+  if (existing && existing.id !== userId) {
+    return res.status(409).json({ error: 'Username already taken' });
+  }
+
+  try {
+    db.updateUsername(userId, username.trim());
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Update username error:', err);
+    res.status(500).json({ error: 'Failed to update username' });
+  }
+});
+
 app.get('/api/admin/predictions/:raceId', adminAuthMiddleware, (req, res) => {
   const raceId = parseInt(req.params.raceId, 10);
   const racePreds = db.getRacePredictions(raceId, 'race');
