@@ -129,6 +129,11 @@ function updateUserPassword(userId, passwordHash) {
     .run(passwordHash, userId);
 }
 
+function updateUsername(userId, newUsername) {
+  return db.prepare('UPDATE users SET username = ? WHERE id = ?')
+    .run(newUsername, userId);
+}
+
 function getAllUsers() {
   return db.prepare('SELECT id, username, email, email_optin, created_at FROM users ORDER BY username').all();
 }
@@ -332,6 +337,7 @@ module.exports = {
   updateUserEmail,
   updateUserEmailOptin,
   updateUserPassword,
+  updateUsername,
   getAllUsers,
   getUsersWithoutPrediction,
   createPasswordResetToken,

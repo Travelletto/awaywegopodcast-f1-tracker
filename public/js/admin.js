@@ -287,23 +287,48 @@
               <th>Email</th>
               <th>Reminders</th>
               <th>Joined</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             ${users.map(u => `
               <tr>
                 <td>${u.id}</td>
-                <td>${escHtml(u.username)}</td>
+                <td id="username-cell-${u.id}">${escHtml(u.username)}</td>
                 <td>${escHtml(u.email || '-')}</td>
                 <td>${u.email_optin ? 'Yes' : 'No'}</td>
                 <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                <td><button class="btn btn-small btn-secondary rename-btn" data-user-id="${u.id}" data-username="${escHtml(u.username)}">Rename</button></td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       `;
+
+      list.querySelectorAll('.rename-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const userId = btn.dataset.userId;
+          const currentName = btn.dataset.username;
+          const newName = prompt('Enter new username:', currentName);
+          if (newName && newName.trim() !== currentName) {
+            renameUser(userId, newName.trim());
+          }
+        });
+      });
     } catch (err) {
       list.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  async function renameUser(userId, newUsername) {
+    try {
+      await api(`/api/admin/users/${userId}/username`, {
+        method: 'PUT',
+        body: JSON.stringify({ username: newUsername })
+      });
+      loadUsers();
+    } catch (err) {
+      alert('Rename failed: ' + err.message);
     }
   }
 
