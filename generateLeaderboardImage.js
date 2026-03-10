@@ -44,9 +44,9 @@ function rankColor(rank) {
   return WHITE;
 }
 
-async function generateLeaderboardImage() {
+async function generateLeaderboardImage(maxRows) {
   const leaderboard = db.calculateLeaderboard();
-  const rows = Math.min(leaderboard.length, MAX_ROWS);
+  const rows = Math.min(leaderboard.length, maxRows || MAX_ROWS);
   const HEIGHT = TITLE_H + COL_HDR_H + ROW_H * rows + FOOTER_H;
 
   const canvas = createCanvas(WIDTH, HEIGHT);
