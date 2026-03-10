@@ -15,7 +15,8 @@ const PORT = process.env.PORT || 3000;
 
 app.get("/leaderboard-image.png", async (req, res) => {
   try {
-    const buffer = await generateLeaderboardImage();
+    const limit = req.query.limit ? Math.max(1, Math.min(parseInt(req.query.limit, 10) || 20, 20)) : undefined;
+    const buffer = await generateLeaderboardImage(limit);
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
     res.send(buffer);
