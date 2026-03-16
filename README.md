@@ -1,4 +1,4 @@
-# Away We Go Podcast - F1 Prediction Tracker 2026
+# Away We Go Podcast - Predict the Podium 2026
 
 A web-based prediction game for the 2026 Formula 1 season. Users pick their predicted podium (P1, P2, P3) for each race and score points for correct predictions.
 

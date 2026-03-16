@@ -1,7 +1,7 @@
 {
   "name": "awaywegopodcast-f1-tracker",
   "version": "1.0.0",
-  "description": "Away We Go Podcast - F1 2026 Season Prediction Tracker",
+  "description": "Away We Go Podcast - Predict the Podium 2026",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

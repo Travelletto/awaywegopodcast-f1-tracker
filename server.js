@@ -1,4 +1,4 @@
-// server.js - Away We Go Podcast F1 Prediction Tracker
+// server.js - Away We Go Podcast - Predict the Podium
 require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -124,7 +124,7 @@ async function sendPasswordResetEmail(email, resetToken, username, baseUrl) {
       body: JSON.stringify({
         personalizations: [{
           to: [{ email }],
-          subject: 'Reset Your F1 Tracker Password'
+          subject: 'Reset Your Predict the Podium Password'
         }],
         from: {
           email: process.env.FROM_EMAIL || 'noreply@awaywegopodcast.com',
@@ -135,7 +135,7 @@ async function sendPasswordResetEmail(email, resetToken, username, baseUrl) {
           value: `
             <h2>Password Reset Request</h2>
             <p>Hi ${username},</p>
-            <p>You requested to reset your password for the Away We Go Podcast F1 Prediction Tracker.</p>
+            <p>You requested to reset your password for the Away We Go Podcast Predict the Podium game.</p>
             <p><a href="${resetUrl}" style="background: #E4002B; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a></p>
             <p>Or copy this link: ${resetUrl}</p>
             <p>This link expires in 1 hour.</p>
@@ -685,7 +685,7 @@ app.get('*', (req, res) => {
 // ── Start Server ──
 
 app.listen(PORT, () => {
-  console.log(`F1 Prediction Tracker running at http://localhost:${PORT}`);
+  console.log(`Predict the Podium running at http://localhost:${PORT}`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
   generateLeaderboardImage().catch(err => console.error('Leaderboard image (startup):', err));
 });

@@ -61,7 +61,7 @@ async function generateLeaderboardImage(maxRows) {
   ctx.font = 'bold 22px "DejaVu Sans"';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Away We Go Podcast  ·  F1 2026 Prediction Leaderboard', WIDTH / 2, TITLE_H / 2);
+  ctx.fillText('Away We Go Podcast  ·  Predict the Podium 2026', WIDTH / 2, TITLE_H / 2);
 
   const hdrY = TITLE_H;
   ctx.fillStyle = HEADER_BG;
