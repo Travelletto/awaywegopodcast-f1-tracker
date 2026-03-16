@@ -1,4 +1,4 @@
-// app.js - Frontend for F1 Prediction Tracker
+// app.js - Frontend for Predict the Podium
 (() => {
   'use strict';
 

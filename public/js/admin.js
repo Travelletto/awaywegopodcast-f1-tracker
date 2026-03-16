@@ -1,4 +1,4 @@
-// admin.js - Admin panel for F1 Prediction Tracker
+// admin.js - Admin panel for Predict the Podium
 
 (function () {
   'use strict';
