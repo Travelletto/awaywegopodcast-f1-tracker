@@ -94,6 +94,8 @@ const RACES = [
   { id: 15, name: '🇮🇹 Italian Grand Prix',       location: 'Monza',       dates: 'Sep 4-6',    sprint: false, qualiLock: '2026-09-05T13:00:00Z' },
   { id: 16, name: '🇪🇸 Madrid Grand Prix',        location: 'Madrid',      dates: 'Sep 11-13',  sprint: false, qualiLock: '2026-09-12T13:00:00Z' },
   { id: 17, name: '🇦🇿 Azerbaijan Grand Prix',    location: 'Baku',        dates: 'Sep 25-27',  sprint: false, qualiLock: '2026-09-26T11:00:00Z' },
+  // Relocated from Sakhir (id 4). New id so predictions saved for the April date don't carry over.
+  { id: 25, name: '🇧🇭 Bahrain Grand Prix in Malaysia', location: 'Sepang, Malaysia', dates: 'Oct 2-4', sprint: false, qualiLock: '2026-10-03T08:00:00Z' },
   { id: 18, name: '🇸🇬 Singapore Grand Prix',     location: 'Singapore',   dates: 'Oct 9-11',   sprint: true,  sprintQualiLock: '2026-10-09T12:30:00Z', qualiLock: '2026-10-10T13:00:00Z' },
   { id: 19, name: '🇺🇸 United States Grand Prix', location: 'Austin',      dates: 'Oct 23-25',  sprint: false, qualiLock: '2026-10-24T20:00:00Z' },
   { id: 20, name: '🇲🇽 Mexican Grand Prix',       location: 'Mexico City', dates: 'Oct 30-Nov 1', sprint: false, qualiLock: '2026-10-31T22:00:00Z' },
