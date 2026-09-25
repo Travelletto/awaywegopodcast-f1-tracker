@@ -41,8 +41,8 @@
       currentView = 'calendar';
       renderUserArea();
       showNav();
-      renderView(currentView);
       attachNavHandlers();
+      await openNextRace();
     } else {
       // Not logged in - show leaderboard only
       currentView = 'leaderboard';
@@ -119,8 +119,8 @@
     await loadSeasonData();
     renderUserArea();
     showNav();
-    renderView('calendar');
     attachNavHandlers();
+    await openNextRace();
   });
 
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -152,8 +152,8 @@
     await loadSeasonData();
     renderUserArea();
     showNav();
-    renderView('calendar');
     attachNavHandlers();
+    await openNextRace();
   });
 
   document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
@@ -303,14 +303,14 @@ document.getElementById('inlineLoginLink').addEventListener('click', (e) => {
     switch (view) {
       case 'calendar':
         if (!currentUser) {
-          showSignupModal();
+          showLoginModal();
           return;
         }
         renderCalendar(main);
         break;
       case 'predictions':
         if (!currentUser) {
-          showSignupModal();
+          showLoginModal();
           return;
         }
         renderMyPredictions(main);
@@ -320,13 +320,13 @@ document.getElementById('inlineLoginLink').addEventListener('click', (e) => {
         break;
       case 'settings':
         if (!currentUser) {
-          showSignupModal();
+          showLoginModal();
           return;
         }
         renderSettings(main);
         break;
       case 'login':
-        showSignupModal();
+        showLoginModal();
         break;
       default:
         main.innerHTML = '<p class="loading">Unknown view</p>';
@@ -361,7 +361,7 @@ async function renderCalendar(container) {
   
   // Render races
   const raceList = document.getElementById('raceList');
-  for (const race of seasonData.races) {
+  seasonData.races.forEach((race, index) => {
     const card = document.createElement('div');
     card.className = 'race-card';
     
@@ -381,7 +381,7 @@ async function renderCalendar(container) {
     const statusClass = allResultsIn ? 'status-completed' : (race.raceLocked ? 'status-locked' : 'status-open');
     
     card.innerHTML = `
-      <div class="race-number">${race.id}</div>
+      <div class="race-number">${index + 1}</div>
       <div class="race-info">
         <div class="race-name">
           ${escHtml(race.name)}
@@ -397,7 +397,7 @@ async function renderCalendar(container) {
     
     card.addEventListener('click', () => showRaceDetail(race));
     raceList.appendChild(card);
-  }
+  });
   
   // Render sidebar leaderboard
   const sidebarList = document.getElementById('sidebarLeaderboard');
@@ -426,6 +426,26 @@ async function renderCalendar(container) {
     renderView('leaderboard');
   });
 }
+
+  // Open the first race still accepting predictions that the user hasn't
+  // fully predicted; if they're all done, the next open race; else the calendar.
+  async function openNextRace() {
+    const openRaces = seasonData.races.filter(r => !r.raceLocked || (r.sprint && !r.sprintLocked));
+    if (openRaces.length === 0) {
+      renderView('calendar');
+      return;
+    }
+
+    const resp = await fetch('/api/my-predictions', { credentials: 'include' });
+    const data = resp.ok ? await resp.json() : { predictions: [] };
+    const made = new Set(data.predictions.map(p => `${p.race_id}_${p.prediction_type}`));
+
+    const needsPrediction = openRaces.find(r =>
+      (!r.raceLocked && !made.has(`${r.id}_race`)) ||
+      (r.sprint && !r.sprintLocked && !made.has(`${r.id}_sprint`))
+    );
+    showRaceDetail(needsPrediction || openRaces[0]);
+  }
 
   // ── Race Detail View ──
   async function showRaceDetail(race) {
